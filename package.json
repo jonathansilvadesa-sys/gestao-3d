@@ -2,7 +2,6 @@
   "name": "gestao-3d",
   "version": "1.0.0",
   "description": "Calculadora de custos e gestão de estoque para impressão 3D",
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
