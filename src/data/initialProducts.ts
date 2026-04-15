@@ -1,0 +1,58 @@
+import type { Product } from '@/types';
+
+export const INITIAL_PRODUCTS: Product[] = [
+  {
+    id: 1, nome: 'Pikachu', tempo: 20, peso: 379, unidades: 25,
+    filamentoCustoKg: 99, custoFilamento: 37.52, potenciaW: 350, custoKwh: 0.84,
+    custoEnergia: 2.94, amortizacao: 6.0, custoFixoMes: 300, unidadesMes: 10,
+    acessorios: [{ nome: 'Embalagem', qtd: 25, custoUn: 1.0 }, { nome: 'Chaveiro', qtd: 25, custoUn: 1.0 }],
+    markup: 8, falhas: 15, imposto: 8, txCartao: 5, custoAnuncio: 20,
+    custoTotal: 93.4, custoUn: 3.74, precoConsumidor: 29.89, precoLojista: 14.94,
+    lucroLiquidoConsumidor: 17.52, lucroLiquidoLojista: 10.31, estoque: 0,
+  },
+  {
+    id: 2, nome: 'Mimikyu', tempo: 33, peso: 160, unidades: 3,
+    filamentoCustoKg: 99, custoFilamento: 15.84, potenciaW: 350, custoKwh: 0.84,
+    custoEnergia: 4.85, amortizacao: 9.9, custoFixoMes: 300, unidadesMes: 10,
+    acessorios: [{ nome: 'Embalagem', qtd: 1, custoUn: 2.5 }],
+    markup: 5, falhas: 15, imposto: 8, txCartao: 5, custoAnuncio: 20,
+    custoTotal: 47.38, custoUn: 15.79, precoConsumidor: 78.96, precoLojista: 39.48,
+    lucroLiquidoConsumidor: 42.32, lucroLiquidoLojista: 21.79, estoque: 0,
+  },
+  {
+    id: 3, nome: 'Grade Fan', tempo: 2, peso: 44, unidades: 3,
+    filamentoCustoKg: 99, custoFilamento: 4.36, potenciaW: 360, custoKwh: 0.84,
+    custoEnergia: 0.3, amortizacao: 0.6, custoFixoMes: 300, unidadesMes: 10,
+    acessorios: [{ nome: 'Embalagem', qtd: 1, custoUn: 2.5 }],
+    markup: 2, falhas: 15, imposto: 8, txCartao: 5, custoAnuncio: 20,
+    custoTotal: 26.98, custoUn: 8.99, precoConsumidor: 17.99, precoLojista: 8.99,
+    lucroLiquidoConsumidor: 6.03, lucroLiquidoLojista: 0, estoque: 0,
+  },
+  {
+    id: 4, nome: 'Scratt', tempo: 28, peso: 508.86, unidades: 1,
+    filamentoCustoKg: 110, custoFilamento: 55.97, potenciaW: 360, custoKwh: 0.84,
+    custoEnergia: 4.23, amortizacao: 8.4, custoFixoMes: 300, unidadesMes: 10,
+    acessorios: [{ nome: 'Embalagem', qtd: 1, custoUn: 2.5 }],
+    markup: 5, falhas: 15, imposto: 8, txCartao: 5, custoAnuncio: 20,
+    custoTotal: 77.98, custoUn: 77.98, precoConsumidor: 389.9, precoLojista: 194.95,
+    lucroLiquidoConsumidor: 208.99, lucroLiquidoLojista: 107.61, estoque: 0,
+  },
+  {
+    id: 5, nome: 'Suporte Placa de Vídeo', tempo: 2, peso: 20.26, unidades: 1,
+    filamentoCustoKg: 110, custoFilamento: 2.23, potenciaW: 360, custoKwh: 0.84,
+    custoEnergia: 0.3, amortizacao: 0.6, custoFixoMes: 0, unidadesMes: 40,
+    acessorios: [{ nome: 'Embalagem', qtd: 1, custoUn: 2.5 }],
+    markup: 4, falhas: 15, imposto: 8, txCartao: 5, custoAnuncio: 20,
+    custoTotal: 4.27, custoUn: 4.27, precoConsumidor: 17.08, precoLojista: 8.54,
+    lucroLiquidoConsumidor: 8.58, lucroLiquidoLojista: 3.93, estoque: 0,
+  },
+  {
+    id: 6, nome: 'Bob Joe', tempo: 3, peso: 29.95, unidades: 1,
+    filamentoCustoKg: 110, custoFilamento: 3.29, potenciaW: 360, custoKwh: 0.84,
+    custoEnergia: 0.76, amortizacao: 0.9, custoFixoMes: 300, unidadesMes: 10,
+    acessorios: [{ nome: 'Embalagem', qtd: 1, custoUn: 2.5 }],
+    markup: 5, falhas: 15, imposto: 8, txCartao: 5, custoAnuncio: 20,
+    custoTotal: 5.49, custoUn: 5.49, precoConsumidor: 27.46, precoLojista: 13.73,
+    lucroLiquidoConsumidor: 21.97, lucroLiquidoLojista: 8.24, estoque: 0,
+  },
+];
