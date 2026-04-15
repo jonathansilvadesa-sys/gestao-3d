@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { useMemo, useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { StatCard } from '@/components/shared/StatCard';
 import { Badge } from '@/components/shared/Badge';
 import { R, margem, COLORS, truncate } from '@/utils/formatters';
+import { exportarRelatorioPDF } from '@/utils/exportPdf';
 import type { Product } from '@/types';
 
 interface Props {
@@ -12,30 +13,63 @@ interface Props {
 }
 
 export function Dashboard({ products, onSelect, onEditMarkup }: Props) {
+  const [exporting, setExporting] = useState(false);
+
   const totals = useMemo(() => ({
-    totalPecas: products.length,
-    totalLucroC: products.reduce((a, p) => a + p.lucroLiquidoConsumidor, 0),
-    totalLucroL: products.reduce((a, p) => a + p.lucroLiquidoLojista, 0),
-    avgMarkup: products.length
+    totalPecas:     products.length,
+    totalLucroC:    products.reduce((a, p) => a + p.lucroLiquidoConsumidor, 0),
+    totalLucroL:    products.reduce((a, p) => a + p.lucroLiquidoLojista, 0),
+    avgMarkup:      products.length
       ? (products.reduce((a, p) => a + p.markup, 0) / products.length).toFixed(1)
       : '0',
-    maisLucrativo: [...products].sort((a, b) => b.lucroLiquidoConsumidor - a.lucroLiquidoConsumidor)[0],
+    maisLucrativo:  [...products].sort((a, b) => b.lucroLiquidoConsumidor - a.lucroLiquidoConsumidor)[0],
   }), [products]);
 
   const chartData = products.map((p) => ({
-    name: truncate(p.nome, 10),
-    'Custo Un':    p.custoUn,
-    'Preço':       p.precoConsumidor,
-    'Lucro Líq.':  p.lucroLiquidoConsumidor,
+    name:        truncate(p.nome, 10),
+    'Custo Un':  p.custoUn,
+    'Preço':     p.precoConsumidor,
+    'Lucro Líq.': p.lucroLiquidoConsumidor,
   }));
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await exportarRelatorioPDF(products);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <>
-      {/* KPI cards */}
+      {/* KPI cards + botão PDF */}
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="font-bold text-gray-700 text-lg">Visão Geral</h2>
+        <button
+          onClick={handleExport}
+          disabled={exporting || products.length === 0}
+          className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-gray-50 disabled:opacity-50 transition shadow-sm"
+        >
+          {exporting ? (
+            <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            </svg>
+          ) : (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          )}
+          {exporting ? 'Gerando PDF…' : 'Exportar PDF'}
+        </button>
+      </div>
+
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Total de peças"          value={totals.totalPecas}             color="indigo" />
-        <StatCard label="Lucro total (consumidor)" value={R(totals.totalLucroC)}         color="emerald" />
-        <StatCard label="Lucro total (lojista)"    value={R(totals.totalLucroL)}         color="purple" />
+        <StatCard label="Total de peças"           value={totals.totalPecas}       color="indigo" />
+        <StatCard label="Lucro total (consumidor)"  value={R(totals.totalLucroC)}   color="emerald" />
+        <StatCard label="Lucro total (lojista)"     value={R(totals.totalLucroL)}   color="purple" />
         <StatCard
           label="Markup médio"
           value={`${totals.avgMarkup}x`}

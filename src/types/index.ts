@@ -5,13 +5,31 @@ export interface Accessory {
   custoUn: number;
 }
 
+// ─── Material (rolo de filamento) ─────────────────────────────────────────────
+export type FilamentoTipo = 'PLA' | 'PETG' | 'ABS' | 'TPU' | 'ASA' | 'Outro';
+
+export interface Material {
+  id: number;
+  nome: string;          // Ex: "Polymaker PLA Matte"
+  tipo: FilamentoTipo;
+  cor: string;           // Ex: "Preto"
+  precoPago: number;     // R$ total pago no rolo
+  pesoTotal: number;     // gramas totais do rolo (ex: 1000)
+  pesoAtual: number;     // gramas restantes
+}
+
+/** Custo por grama de um material */
+export const custoPorGrama = (m: Material): number =>
+  m.pesoTotal > 0 ? m.precoPago / m.pesoTotal : 0;
+
 // ─── Peça (produto 3D) ────────────────────────────────────────────────────────
 export interface Product {
   id: number;
   nome: string;
-  tempo: number;         // horas
-  peso: number;          // gramas
-  unidades: number;      // unidades no lote
+  tempo: number;           // horas
+  peso: number;            // gramas
+  unidades: number;
+  materialId?: number;     // referência ao Material (se selecionado)
   filamentoCustoKg: number;
   custoFilamento: number;
   potenciaW: number;
@@ -22,10 +40,10 @@ export interface Product {
   unidadesMes: number;
   acessorios: Accessory[];
   markup: number;
-  falhas: number;        // %
-  imposto: number;       // %
-  txCartao: number;      // %
-  custoAnuncio: number;  // %
+  falhas: number;          // %
+  imposto: number;         // %
+  txCartao: number;        // %
+  custoAnuncio: number;    // %
   // calculados
   custoTotal: number;
   custoUn: number;
@@ -47,8 +65,8 @@ export interface CalcResult {
   precoLojista: number;
   lucroLiquidoConsumidor: number;
   lucroLiquidoLojista: number;
-  breakEvenMarkup: number;   // markup mínimo para não ter prejuízo
-  margemConsumidor: number;  // % de margem líquida
+  breakEvenMarkup: number;
+  margemConsumidor: number;
   margemLojista: number;
 }
 
@@ -58,6 +76,7 @@ export interface ProductForm {
   tempo: string;
   peso: string;
   unidades: string;
+  materialId: string;      // '' = manual
   filamentoCustoKg: string;
   potenciaW: string;
   custoKwh: string;
@@ -68,29 +87,42 @@ export interface ProductForm {
   imposto: string;
   txCartao: string;
   custoAnuncio: string;
-  acessNome: string;
-  acessQtd: string;
-  acessCusto: string;
 }
 
 // ─── Configurações globais (SettingsContext) ──────────────────────────────────
 export interface AppSettings {
-  custoKwh: number;        // R$/kWh
-  imposto: number;         // %
-  txCartao: number;        // %
-  custoAnuncio: number;    // %
-  falhas: number;          // %
-  custoFixoMes: number;    // R$/mês
-  unidadesMes: number;     // unidades/mês (para rateio)
-  potenciaW: number;       // W (potência padrão da impressora)
-  filamentoCustoKg: number; // R$/kg (filamento padrão)
-  amortizacaoHoras: number; // horas de vida útil da impressora
-  amortizacaoValor: number; // valor da impressora (R$)
+  custoKwh: number;
+  imposto: number;
+  txCartao: number;
+  custoAnuncio: number;
+  falhas: number;
+  custoFixoMes: number;
+  unidadesMes: number;
+  potenciaW: number;
+  filamentoCustoKg: number;
+  amortizacaoHoras: number;
+  amortizacaoValor: number;
 }
 
 export interface SettingsContextType {
   settings: AppSettings;
   updateSettings: (partial: Partial<AppSettings>) => void;
+}
+
+// ─── ProductContext ───────────────────────────────────────────────────────────
+export interface ProductContextType {
+  products: Product[];
+  addProduct: (p: Product) => void;
+  updateProduct: (id: number, updates: Partial<Product>) => void;
+  removeProduct: (id: number) => void;
+}
+
+// ─── MaterialContext ──────────────────────────────────────────────────────────
+export interface MaterialContextType {
+  materials: Material[];
+  addMaterial: (m: Material) => void;
+  updateMaterial: (id: number, updates: Partial<Material>) => void;
+  removeMaterial: (id: number) => void;
 }
 
 // ─── Usuário e autenticação ───────────────────────────────────────────────────
@@ -101,7 +133,7 @@ export interface User {
   nome: string;
   email: string;
   role: UserRole;
-  avatar: string; // inicial para o avatar
+  avatar: string;
 }
 
 export interface AuthContextType {
@@ -112,4 +144,4 @@ export interface AuthContextType {
 }
 
 // ─── Tabs da aplicação ────────────────────────────────────────────────────────
-export type AppTab = 'dashboard' | 'produtos' | 'estoque';
+export type AppTab = 'dashboard' | 'produtos' | 'estoque' | 'materiais';
