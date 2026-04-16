@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect, type ChangeEvent } from 'react';
 import { useSettings }  from '@/contexts/SettingsContext';
 import { useMaterials } from '@/contexts/MaterialContext';
 import { useCanais }    from '@/contexts/CanaisContext';
+import { PRINTER_PRESETS } from '@/types';
 import { calcProductFromForm, calcMarkupFromMargem } from '@/utils/calc';
 import { R } from '@/utils/formatters';
 import { custoPorGrama } from '@/types';
@@ -68,6 +69,15 @@ export function NovaModal({ onClose, onAdd }: Props) {
 
   // ── Modo de entrada: dados referem-se ao lote total (mesa cheia) ────────
   const [isFullBatch, setIsFullBatch] = useState(false);
+
+  // ── Frete ────────────────────────────────────────────────────────────────
+  const [freteMode, setFreteMode] = useState<'none' | 'fixo' | 'percentual'>(
+    (settings as { freteMode?: 'none' | 'fixo' | 'percentual' }).freteMode ?? 'none'
+  );
+  const [freteValor, setFreteValor] = useState(String((settings as { freteValor?: number }).freteValor ?? 0));
+
+  // ── Impressora ───────────────────────────────────────────────────────────
+  const [impressoraId, setImpressoraId] = useState(settings.impressoraAtualId ?? '');
 
   // ── Modo markup vs meta de margem ────────────────────────────────────────
   const [margemModo, setMargemModo] = useState<'markup' | 'margem'>('markup');
@@ -150,9 +160,9 @@ export function NovaModal({ onClose, onAdd }: Props) {
     .map((a) => ({ qtd: parseFloat(a.qtd) || 0, custoUn: parseFloat(a.custo) || 0 }));
 
   const calc = useMemo(
-    () => calcProductFromForm(f, settings, filamentosCalc, acessoriosCalc, isFullBatch),
+    () => calcProductFromForm(f, settings, filamentosCalc, acessoriosCalc, isFullBatch, freteMode, parseFloat(freteValor) || 0),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [f, settings, JSON.stringify(filamentosCalc), JSON.stringify(acessoriosCalc), isFullBatch]
+    [f, settings, JSON.stringify(filamentosCalc), JSON.stringify(acessoriosCalc), isFullBatch, freteMode, freteValor]
   );
 
   // ── Peso total = soma dos filamentos ──────────────────────────────────────
@@ -295,6 +305,11 @@ export function NovaModal({ onClose, onAdd }: Props) {
       maoObraTaxa:   +f.maoObraTaxa,
       margemAlvo:    margemModo === 'margem' ? parseFloat(margemAlvo) || undefined : undefined,
       isFullBatch,
+      freteMode,
+      freteValor:  parseFloat(freteValor) || 0,
+      custoFrete:  calc.custoFrete,
+      impressoraId: impressoraId || undefined,
+      historicoPrecos: [],
       custoTotal:   calc.custoTotal,
       custoUn:      calc.custoUn,
       precoConsumidor: calc.precoConsumidor,
@@ -795,6 +810,39 @@ export function NovaModal({ onClose, onAdd }: Props) {
                 </span>
               </div>
             )}
+          </div>
+
+          {/* ── Frete ────────────────────────────────────────────────────────── */}
+          <div className="space-y-2">
+            <SectionTitle>🚚 Custo de Frete</SectionTitle>
+            <div className="bg-sky-50 border border-sky-100 rounded-2xl p-3 space-y-2">
+              <div className="flex gap-2">
+                {(['none', 'fixo', 'percentual'] as const).map((m) => (
+                  <button key={m} type="button" onClick={() => setFreteMode(m)}
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${
+                      freteMode === m ? 'bg-sky-600 text-white' : 'bg-white border border-sky-200 text-sky-700 hover:bg-sky-50'
+                    }`}>
+                    {m === 'none' ? '🚫 Sem frete' : m === 'fixo' ? '💰 Valor fixo' : '% Percentual'}
+                  </button>
+                ))}
+              </div>
+              {freteMode !== 'none' && (
+                <div className="flex items-center gap-2">
+                  <input type="number" min="0" step="0.01" value={freteValor}
+                    onChange={(e) => setFreteValor(e.target.value)}
+                    className="flex-1 bg-white border border-sky-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
+                  <span className="text-sm text-sky-600 font-medium w-10">
+                    {freteMode === 'fixo' ? 'R$' : '%'}
+                  </span>
+                </div>
+              )}
+              {freteMode !== 'none' && calc.custoFrete > 0 && (
+                <div className="flex justify-between items-center text-xs text-sky-700">
+                  <span>Frete por unidade ({freteMode === 'fixo' ? 'incluído no custo' : 'sobre o preço final'}):</span>
+                  <span className="font-bold">{calc.custoFrete.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* ── Preview ──────────────────────────────────────────────────────── */}

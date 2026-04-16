@@ -11,7 +11,6 @@ export function calcBreakEvenMarkup(
 
 // ─── Markup a partir de margem alvo ─────────────────────────────────────────
 // Dada uma meta de margem (%), calcula o markup necessário.
-// Derivação:
 //   preço = custo × markup
 //   lucroLiq = preço × (1 - descontos) - custo
 //   margem  = lucroLiq / preço = (1 - descontos) - 1/markup
@@ -65,9 +64,12 @@ export function calcCustoFilamentos(
 }
 
 // ─── Recalcula preços ao alterar markup ──────────────────────────────────────
+// fretePercent só se aplica no modo frete percentual: é tratado como desconto
+// sobre o preço (o vendedor paga X% do valor cobrado para cobrir o frete).
 export function recalcFromMarkup(
   custoUn: number, markup: number,
-  imposto: number, txCartao: number, custoAnuncio: number
+  imposto: number, txCartao: number, custoAnuncio: number,
+  fretePercent = 0,
 ): Pick<CalcResult,
   | 'precoConsumidor' | 'precoLojista'
   | 'lucroLiquidoConsumidor' | 'lucroLiquidoLojista'
@@ -76,9 +78,9 @@ export function recalcFromMarkup(
   const precoConsumidor = +(custoUn * markup).toFixed(2);
   const precoLojista    = +(precoConsumidor / 2).toFixed(2);
 
-  const descontosC = (imposto + txCartao + custoAnuncio) / 100;
+  const descontosC = (imposto + txCartao + custoAnuncio + fretePercent) / 100;
   const lucroLiquidoConsumidor = +((precoConsumidor - custoUn) - precoConsumidor * descontosC).toFixed(2);
-  const descontosL = (imposto + txCartao) / 100;
+  const descontosL = (imposto + txCartao + fretePercent) / 100;
   const lucroLiquidoLojista = +((precoLojista - custoUn) - precoLojista * descontosL).toFixed(2);
 
   const breakEvenMarkup  = calcBreakEvenMarkup(imposto, txCartao, custoAnuncio);
@@ -95,19 +97,21 @@ export function recalcFromMarkup(
 }
 
 // ─── Cálculo completo da peça ────────────────────────────────────────────────
-// isFullBatch = true → peso e tempo inseridos são do lote inteiro (mesa cheia Bambu Lab).
-// Neste modo, dividimos peso e tempo pelo nº de unidades antes de calcular o custo unitário.
-// Acessórios já possuem lógica de diluição (÷ unidades) — permanecem inalterados.
+// isFullBatch = true  → peso e tempo inseridos são do lote inteiro (mesa cheia Bambu Lab).
+// freteMode   = 'fixo'       → freteValor (R$) entra no custo base por unidade
+// freteMode   = 'percentual' → freteValor (%) é aplicado como desconto no preço final
 export function calcProductFromForm(
   f: ProductForm,
   settings: AppSettings,
   filamentos: Pick<FilamentoUsado, 'peso' | 'custoKg'>[] = [],
   acessorios: Pick<Accessory, 'qtd' | 'custoUn'>[]       = [],
-  isFullBatch = false
+  isFullBatch  = false,
+  freteMode:  'none' | 'fixo' | 'percentual' = 'none',
+  freteValor  = 0,
 ): CalcResult {
-  const unidades     = parseFloat(f.unidades)     || 1;
+  const unidades    = parseFloat(f.unidades)     || 1;
 
-  // Modo lote total: divide peso e tempo pelo lote para obter custo unitário de material e energia
+  // Modo lote total: divide peso e tempo pelo lote para custo por unidade
   const batchDiv      = isFullBatch && unidades > 1 ? unidades : 1;
   const rawTempo      = parseFloat(f.tempo)        || 0;
   const tempo         = rawTempo / batchDiv;
@@ -127,6 +131,11 @@ export function calcProductFromForm(
   const maoObraHoras = parseFloat(f.maoObraHoras) || 0;
   const maoObraTaxa  = parseFloat(f.maoObraTaxa)  || (settings as { maoObraTaxa?: number }).maoObraTaxa || 0;
 
+  // Frete fixo entra no custo base antes do markup
+  const custoFreteFixo = freteMode === 'fixo' ? (freteValor ?? 0) : 0;
+  // Frete percentual é tratado como desconto no recalcFromMarkup
+  const fretePercent   = freteMode === 'percentual' ? (freteValor ?? 0) : 0;
+
   const custoFilamento   = calcCustoFilamentos(adjFilamentos);
   const custoEnergia     = calcCustoEnergia(potW, tempo, kwh);
   const amortizacao      = calcAmortizacao(tempo, settings.amortizacaoHoras, settings.amortizacaoValor);
@@ -134,11 +143,22 @@ export function calcProductFromForm(
   const custoAcess       = calcCustoAcessorios(acessorios, unidades);
   const custoMaoObra     = calcCustoMaoObra(maoObraTaxa, maoObraHoras);
 
-  const custoBase  = custoFilamento + custoEnergia + amortizacao + custoFixoRateado + custoAcess + custoMaoObra;
+  const custoBase  = custoFilamento + custoEnergia + amortizacao + custoFixoRateado + custoAcess + custoMaoObra + custoFreteFixo;
   const custoUn    = calcCustoUn(custoBase, falhas);
   const custoTotal = +(custoUn * unidades).toFixed(2);
 
-  const prices = recalcFromMarkup(custoUn, markup, imposto, txCartao, custoAnuncio);
+  const prices = recalcFromMarkup(custoUn, markup, imposto, txCartao, custoAnuncio, fretePercent);
 
-  return { custoFilamento, custoEnergia, amortizacao, custoMaoObra, custoUn, custoTotal, ...prices };
+  // custoFrete para exibição no breakdown
+  const custoFrete = freteMode === 'fixo'
+    ? custoFreteFixo
+    : freteMode === 'percentual'
+      ? +(prices.precoConsumidor * fretePercent / 100).toFixed(2)
+      : 0;
+
+  return {
+    custoFilamento, custoEnergia, amortizacao, custoMaoObra,
+    custoFrete, custoUn, custoTotal,
+    ...prices,
+  };
 }

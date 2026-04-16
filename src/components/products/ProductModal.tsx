@@ -370,6 +370,72 @@ export function ProductModal({ product: p, onClose }: Props) {
               </table>
             </div>
           )}
+
+          {/* Frete */}
+          {(p.freteMode && p.freteMode !== 'none' && (p.freteValor ?? 0) > 0) && (
+            <div className="bg-sky-50 border border-sky-100 rounded-xl px-4 py-3 flex items-center justify-between text-sm">
+              <div>
+                <p className="font-semibold text-sky-700">🚚 Frete</p>
+                <p className="text-xs text-sky-500">
+                  {p.freteMode === 'fixo'
+                    ? `Valor fixo por peça`
+                    : `${p.freteValor}% do preço de venda`}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-sky-700">{R(p.custoFrete ?? 0)}</p>
+                <p className="text-xs text-sky-400">por unidade</p>
+              </div>
+            </div>
+          )}
+
+          {/* Histórico de preços */}
+          {(p.historicoPrecos ?? []).length > 0 && (
+            <div>
+              <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">📈 Histórico de Preços</p>
+              <div className="relative pl-4 space-y-0">
+                {(p.historicoPrecos ?? []).map((h, i) => {
+                  const subiu = h.precoNovo > h.precoAnterior;
+                  const igual = h.precoNovo === h.precoAnterior;
+                  const d = new Date(h.data);
+                  const dataFmt = d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+                  return (
+                    <div key={i} className="relative pb-4 last:pb-0">
+                      {/* Linha vertical */}
+                      {i < (p.historicoPrecos ?? []).length - 1 && (
+                        <div className="absolute left-[-13px] top-5 bottom-0 w-px bg-gray-200" />
+                      )}
+                      {/* Ponto */}
+                      <div className={`absolute left-[-17px] top-1 w-3 h-3 rounded-full border-2 border-white ${
+                        igual ? 'bg-gray-400' : subiu ? 'bg-emerald-500' : 'bg-red-400'
+                      }`} />
+                      <div className="bg-gray-50 rounded-xl px-3 py-2.5">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-gray-700">{dataFmt}</span>
+                            <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                              igual ? 'bg-gray-100 text-gray-500'
+                              : subiu ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-red-100 text-red-700'
+                            }`}>
+                              {igual ? '—' : subiu ? '↑ subiu' : '↓ baixou'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="text-gray-400 line-through text-xs">{R(h.precoAnterior)}</span>
+                            <span className="font-bold text-gray-800">→ {R(h.precoNovo)}</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Markup: {h.markupAnterior}× → {h.markupNovo}×
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-// ─── Acessório / Embalagem ───────────────────────────────────────────────────
+// ─── Acessório / Embalagem (inline na peça) ──────────────────────────────────
 export interface Accessory {
   nome: string;
   qtd: number;
@@ -45,13 +45,91 @@ export interface CanalVenda {
 }
 
 export const CANAIS_VENDA: CanalVenda[] = [
-  { id: 'manual',       nome: 'Manual / Direto',   taxaPercent: 0,    cor: 'gray',   emoji: '🤝' },
-  { id: 'mercadolivre', nome: 'Mercado Livre',      taxaPercent: 14,   cor: 'yellow', emoji: '🛒' },
-  { id: 'shopee',       nome: 'Shopee',             taxaPercent: 14,   cor: 'orange', emoji: '🧡' },
-  { id: 'instagram',    nome: 'Instagram / WhatsApp',taxaPercent: 0,   cor: 'pink',   emoji: '📸' },
-  { id: 'etsy',         nome: 'Etsy',               taxaPercent: 6.5,  cor: 'amber',  emoji: '🌿' },
-  { id: 'site',         nome: 'Site próprio',        taxaPercent: 0,    cor: 'blue',   emoji: '🌐' },
+  { id: 'manual',       nome: 'Manual / Direto',    taxaPercent: 0,    cor: 'gray',   emoji: '🤝' },
+  { id: 'mercadolivre', nome: 'Mercado Livre',       taxaPercent: 14,   cor: 'yellow', emoji: '🛒' },
+  { id: 'shopee',       nome: 'Shopee',              taxaPercent: 14,   cor: 'orange', emoji: '🧡' },
+  { id: 'instagram',    nome: 'Instagram / WhatsApp', taxaPercent: 0,   cor: 'pink',   emoji: '📸' },
+  { id: 'etsy',         nome: 'Etsy',                taxaPercent: 6.5,  cor: 'amber',  emoji: '🌿' },
+  { id: 'site',         nome: 'Site próprio',         taxaPercent: 0,    cor: 'blue',   emoji: '🌐' },
 ];
+
+// ─── Histórico de Preços ──────────────────────────────────────────────────────
+export interface PrecoHistorico {
+  data: string;           // ISO timestamp
+  markupAnterior: number;
+  markupNovo: number;
+  precoAnterior: number;  // precoConsumidor antes
+  precoNovo: number;      // precoConsumidor depois
+}
+
+// ─── Perfil de Impressora ─────────────────────────────────────────────────────
+export interface PrinterProfile {
+  id: string;
+  nome: string;
+  marca: string;
+  potenciaW: number;
+  valorMaquina: number;     // R$
+  vidaUtilHoras: number;
+  isPreset?: boolean;       // true = pré-definido, não deletável
+}
+
+export const PRINTER_PRESETS: PrinterProfile[] = [
+  { id: 'bambu_x1c',         nome: 'X1 Carbon',      marca: 'Bambu Lab',  potenciaW: 350, valorMaquina: 7500, vidaUtilHoras: 20000, isPreset: true },
+  { id: 'bambu_p1s',         nome: 'P1S',             marca: 'Bambu Lab',  potenciaW: 220, valorMaquina: 4500, vidaUtilHoras: 20000, isPreset: true },
+  { id: 'bambu_a1',          nome: 'A1',              marca: 'Bambu Lab',  potenciaW: 185, valorMaquina: 2800, vidaUtilHoras: 20000, isPreset: true },
+  { id: 'bambu_a1mini',      nome: 'A1 Mini',         marca: 'Bambu Lab',  potenciaW: 125, valorMaquina: 1800, vidaUtilHoras: 20000, isPreset: true },
+  { id: 'creality_k1max',    nome: 'K1 Max',          marca: 'Creality',   potenciaW: 350, valorMaquina: 3500, vidaUtilHoras: 20000, isPreset: true },
+  { id: 'creality_ender3v3', nome: 'Ender 3 V3',      marca: 'Creality',   potenciaW: 200, valorMaquina: 1200, vidaUtilHoras: 25000, isPreset: true },
+  { id: 'snapmaker_j1s',     nome: 'J1s',             marca: 'Snapmaker',  potenciaW: 240, valorMaquina: 5500, vidaUtilHoras: 15000, isPreset: true },
+  { id: 'flashforge_adv5m',  nome: 'Adventurer 5M',   marca: 'Flashforge', potenciaW: 350, valorMaquina: 2800, vidaUtilHoras: 20000, isPreset: true },
+];
+
+// ─── Acessório em Estoque (catálogo com variantes) ────────────────────────────
+export type AcessorioCategoria = 'fixacao' | 'magnetico' | 'embalagem' | 'eletronico' | 'chaveiro' | 'outro';
+
+export const ACESSORIO_CAT_INFO: Record<AcessorioCategoria, { label: string; emoji: string; cor: string }> = {
+  fixacao:    { label: 'Fixação',    emoji: '🔩', cor: 'bg-gray-100 text-gray-700' },
+  magnetico:  { label: 'Magnético',  emoji: '🧲', cor: 'bg-red-100 text-red-700' },
+  embalagem:  { label: 'Embalagem',  emoji: '📦', cor: 'bg-amber-100 text-amber-700' },
+  eletronico: { label: 'Eletrônico', emoji: '💡', cor: 'bg-yellow-100 text-yellow-700' },
+  chaveiro:   { label: 'Chaveiro',   emoji: '🔑', cor: 'bg-purple-100 text-purple-700' },
+  outro:      { label: 'Outro',      emoji: '📎', cor: 'bg-blue-100 text-blue-600' },
+};
+
+export interface AcessorioVariante {
+  id: string;
+  tamanho: string;       // '3mm', 'M3x8', '' (sem variante = item único)
+  estoqueAtual: number;
+  estoqueMinimo: number;
+  custoUn: number;       // R$ por unidade
+}
+
+export interface AcessorioMovimento {
+  id: string;
+  data: string;          // ISO timestamp
+  tipo: 'entrada' | 'saida' | 'ajuste';
+  varianteId: string;
+  quantidade: number;
+  motivo: string;
+}
+
+export interface AcessorioEstoque {
+  id: string;
+  nome: string;
+  categoria: AcessorioCategoria;
+  unidade: string;         // 'un', 'pç', 'g', 'cm', 'm'
+  variantes: AcessorioVariante[];
+  movimentacoes: AcessorioMovimento[];
+}
+
+export interface AcessorioContextType {
+  acessorios: AcessorioEstoque[];
+  addAcessorio:    (a: Omit<AcessorioEstoque, 'id' | 'movimentacoes'>) => void;
+  updateAcessorio: (id: string, updates: Partial<Omit<AcessorioEstoque, 'id'>>) => void;
+  removeAcessorio: (id: string) => void;
+  addMovimento:    (acessorioId: string, mov: Omit<AcessorioMovimento, 'id' | 'data'>) => void;
+  getAbaixoMinimo: () => { acessorio: AcessorioEstoque; variante: AcessorioVariante }[];
+}
 
 // ─── Peça (produto 3D) ────────────────────────────────────────────────────────
 export interface Product {
@@ -80,6 +158,14 @@ export interface Product {
   maoObraTaxa: number;     // R$/h de mão de obra
   margemAlvo?: number;     // % meta de margem (modo "lucro desejado")
   isFullBatch?: boolean;   // true = peso/tempo inseridos são do lote total (mesa cheia Bambu)
+  // Frete
+  freteMode?: 'none' | 'fixo' | 'percentual';
+  freteValor?: number;
+  custoFrete?: number;     // calculado
+  // Impressora
+  impressoraId?: string;   // id do PrinterProfile usado
+  // Histórico de preços
+  historicoPrecos?: PrecoHistorico[];
   // calculados
   custoTotal: number;
   custoUn: number;
@@ -96,6 +182,7 @@ export interface CalcResult {
   custoEnergia: number;
   amortizacao: number;
   custoMaoObra: number;
+  custoFrete: number;      // R$ de frete por unidade
   custoUn: number;
   custoTotal: number;
   precoConsumidor: number;
@@ -108,7 +195,6 @@ export interface CalcResult {
 }
 
 // ─── Formulário de nova peça ──────────────────────────────────────────────────
-// filamentos são gerenciados como estado local no NovaModal (FilamentoRow[])
 export interface ProductForm {
   nome: string;
   tempo: string;
@@ -141,17 +227,27 @@ export interface AppSettings {
   amortizacaoHoras: number;
   amortizacaoValor: number;
   maoObraTaxa: number;       // R$/h padrão para mão de obra
+  // Frete padrão
+  freteMode: 'none' | 'fixo' | 'percentual';
+  freteValor: number;
+  // Impressora ativa
+  impressoraAtualId: string; // '' = sem preset selecionado
 }
 
 export interface SettingsContextType {
   settings: AppSettings;
   updateSettings: (partial: Partial<AppSettings>) => void;
+  // Gerenciamento de perfis de impressora personalizados
+  customPrinters: PrinterProfile[];
+  addCustomPrinter:    (p: Omit<PrinterProfile, 'id' | 'isPreset'>) => void;
+  updateCustomPrinter: (id: string, updates: Partial<Omit<PrinterProfile, 'id' | 'isPreset'>>) => void;
+  removeCustomPrinter: (id: string) => void;
 }
 
 // ─── ProductContext ───────────────────────────────────────────────────────────
 export interface ProductContextType {
   products: Product[];
-  addProduct: (p: Product) => void;
+  addProduct:    (p: Product) => void;
   updateProduct: (id: number, updates: Partial<Product>) => void;
   removeProduct: (id: number) => void;
 }
@@ -159,7 +255,7 @@ export interface ProductContextType {
 // ─── MaterialContext ──────────────────────────────────────────────────────────
 export interface MaterialContextType {
   materials: Material[];
-  addMaterial: (m: Material) => void;
+  addMaterial:    (m: Material) => void;
   updateMaterial: (id: number, updates: Partial<Material>) => void;
   removeMaterial: (id: number) => void;
 }
