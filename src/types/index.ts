@@ -239,9 +239,13 @@ export interface SettingsContextType {
   updateSettings: (partial: Partial<AppSettings>) => void;
   // Gerenciamento de perfis de impressora personalizados
   customPrinters: PrinterProfile[];
-  addCustomPrinter:    (p: Omit<PrinterProfile, 'id' | 'isPreset'>) => void;
-  updateCustomPrinter: (id: string, updates: Partial<Omit<PrinterProfile, 'id' | 'isPreset'>>) => void;
-  removeCustomPrinter: (id: string) => void;
+  addCustomPrinter:      (p: Omit<PrinterProfile, 'id' | 'isPreset'>) => void;
+  updateCustomPrinter:   (id: string, updates: Partial<Omit<PrinterProfile, 'id' | 'isPreset'>>) => void;
+  removeCustomPrinter:   (id: string) => void;
+  // Overrides para presets embutidos (edições sem apagar o preset original)
+  printerOverrides: Record<string, Partial<PrinterProfile>>;
+  updatePrinterOverride: (id: string, updates: Partial<Omit<PrinterProfile, 'id' | 'isPreset'>>) => void;
+  resetPrinterOverride:  (id: string) => void;
 }
 
 // ─── ProductContext ───────────────────────────────────────────────────────────

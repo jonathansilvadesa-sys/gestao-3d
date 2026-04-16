@@ -17,7 +17,11 @@ const MARCA_COR: Record<string, string> = {
 };
 
 export function SettingsModal({ onClose }: Props) {
-  const { settings, updateSettings, customPrinters, addCustomPrinter, updateCustomPrinter, removeCustomPrinter } = useSettings();
+  const {
+    settings, updateSettings,
+    customPrinters, addCustomPrinter, updateCustomPrinter, removeCustomPrinter,
+    printerOverrides, updatePrinterOverride, resetPrinterOverride,
+  } = useSettings();
   const { canais, addCanal, updateCanal, removeCanal, resetCanais } = useCanais();
 
   const [form, setForm] = useState<AppSettings>({ ...settings });
@@ -34,6 +38,46 @@ export function SettingsModal({ onClose }: Props) {
   // ── Estado para impressoras personalizadas ──────────────────────────────
   const [showAddPrinter, setShowAddPrinter] = useState(false);
   const [novaPrint, setNovaPrint] = useState({ nome: '', marca: '', potenciaW: '', valorMaquina: '', vidaUtilHoras: '' });
+
+  // ── Estado para edição de perfil (preset ou custom) ─────────────────────
+  type EditingPrinter = { id: string; nome: string; marca: string; potenciaW: string; valorMaquina: string; vidaUtilHoras: string; isPreset: boolean };
+  const [editingPrinter, setEditingPrinter] = useState<EditingPrinter | null>(null);
+
+  const startEditPrinter = (p: PrinterProfile) => {
+    setEditingPrinter({
+      id: p.id, nome: p.nome, marca: p.marca, isPreset: !!p.isPreset,
+      potenciaW:     String(p.potenciaW),
+      valorMaquina:  String(p.valorMaquina),
+      vidaUtilHoras: String(p.vidaUtilHoras),
+    });
+    setShowAddPrinter(false);
+  };
+
+  const saveEditPrinter = () => {
+    if (!editingPrinter) return;
+    const updates = {
+      nome:          editingPrinter.nome,
+      marca:         editingPrinter.marca,
+      potenciaW:     parseFloat(editingPrinter.potenciaW)     || 350,
+      valorMaquina:  parseFloat(editingPrinter.valorMaquina)  || 3000,
+      vidaUtilHoras: parseFloat(editingPrinter.vidaUtilHoras) || 20000,
+    };
+    if (editingPrinter.isPreset) {
+      updatePrinterOverride(editingPrinter.id, updates);
+    } else {
+      updateCustomPrinter(editingPrinter.id, updates);
+    }
+    // Se este perfil está ativo, atualiza os campos do form também
+    if (form.impressoraAtualId === editingPrinter.id) {
+      setForm((prev) => ({
+        ...prev,
+        potenciaW:        updates.potenciaW,
+        amortizacaoValor: updates.valorMaquina,
+        amortizacaoHoras: updates.vidaUtilHoras,
+      }));
+    }
+    setEditingPrinter(null);
+  };
 
   const set = (k: keyof AppSettings) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((p) => ({ ...p, [k]: parseFloat(e.target.value) || 0 }));
@@ -57,7 +101,11 @@ export function SettingsModal({ onClose }: Props) {
     }));
   };
 
-  const allPrinters = [...PRINTER_PRESETS, ...customPrinters];
+  // Mescla presets com overrides do usuário e adiciona customizados
+  const allPrinters: PrinterProfile[] = [
+    ...PRINTER_PRESETS.map((p) => ({ ...p, ...(printerOverrides[p.id] ?? {}) })),
+    ...customPrinters,
+  ];
 
   const Field = ({ label, k, unit }: { label: string; k: keyof AppSettings; unit?: string }) => (
     <div>
@@ -146,23 +194,38 @@ export function SettingsModal({ onClose }: Props) {
                     <div className="flex flex-wrap gap-1.5">
                       {printers.map((p) => {
                         const ativo = form.impressoraAtualId === p.id;
+                        const hasOverride = !!p.isPreset && !!printerOverrides[p.id];
                         return (
-                          <div key={p.id} className="relative">
+                          <div key={p.id} className="relative group">
+                            {/* Badge principal */}
                             <button type="button" onClick={() => applyPrinter(p)}
-                              className={`px-3 py-2 rounded-xl border text-xs font-semibold transition ${
+                              className={`pl-3 pr-8 py-2 rounded-xl border text-xs font-semibold transition ${
                                 ativo ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : `${corClasse} hover:opacity-80`
                               }`}
                               title={`${p.potenciaW}W · R$ ${p.valorMaquina.toLocaleString()} · ${p.vidaUtilHoras.toLocaleString()}h`}>
                               {p.nome}
                               {ativo && <span className="ml-1">✓</span>}
+                              {hasOverride && <span className="ml-1 opacity-70">✎</span>}
                             </button>
+
+                            {/* Botão editar — aparece no hover */}
+                            <button type="button"
+                              onClick={(e) => { e.stopPropagation(); startEditPrinter(p); }}
+                              className={`absolute right-0 top-0 bottom-0 w-7 flex items-center justify-center rounded-r-xl text-[11px] opacity-0 group-hover:opacity-100 transition-opacity ${
+                                ativo ? 'bg-indigo-500 hover:bg-indigo-400 text-white' : 'bg-black/10 hover:bg-black/20 text-gray-700'
+                              }`}
+                              title="Editar perfil">
+                              ✏️
+                            </button>
+
+                            {/* Botão remover — só para custom */}
                             {!p.isPreset && (
                               <button type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   if (confirm(`Remover "${p.nome}"?`)) removeCustomPrinter(p.id);
                                 }}
-                                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold hover:bg-red-600 leading-none"
+                                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold hover:bg-red-600 leading-none z-10"
                                 title="Remover">
                                 ×
                               </button>
@@ -175,6 +238,64 @@ export function SettingsModal({ onClose }: Props) {
                 );
               })}
             </div>
+
+            {/* Formulário de edição inline de perfil */}
+            {editingPrinter && (
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-2xl p-3 space-y-2">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-bold text-amber-700">
+                    ✏️ Editar: {editingPrinter.nome}
+                    {editingPrinter.isPreset && <span className="ml-2 font-normal text-amber-500">(preset)</span>}
+                  </p>
+                  {editingPrinter.isPreset && printerOverrides[editingPrinter.id] && (
+                    <button type="button"
+                      onClick={() => { resetPrinterOverride(editingPrinter.id); setEditingPrinter(null); }}
+                      className="text-[11px] text-amber-600 hover:text-amber-800 underline">
+                      Restaurar padrão
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={editingPrinter.nome}
+                    onChange={(e) => setEditingPrinter((p) => p && ({ ...p, nome: e.target.value }))}
+                    placeholder="Nome"
+                    className="col-span-2 border border-amber-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                  {!editingPrinter.isPreset && (
+                    <input value={editingPrinter.marca}
+                      onChange={(e) => setEditingPrinter((p) => p && ({ ...p, marca: e.target.value }))}
+                      placeholder="Marca"
+                      className="col-span-2 border border-amber-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                  )}
+                  <div className="relative">
+                    <input type="number" value={editingPrinter.potenciaW}
+                      onChange={(e) => setEditingPrinter((p) => p && ({ ...p, potenciaW: e.target.value }))}
+                      placeholder="Potência"
+                      className="w-full border border-amber-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-amber-400">W</span>
+                  </div>
+                  <div className="relative">
+                    <input type="number" value={editingPrinter.valorMaquina}
+                      onChange={(e) => setEditingPrinter((p) => p && ({ ...p, valorMaquina: e.target.value }))}
+                      placeholder="Valor"
+                      className="w-full border border-amber-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-amber-400">R$</span>
+                  </div>
+                  <div className="relative col-span-2">
+                    <input type="number" value={editingPrinter.vidaUtilHoras}
+                      onChange={(e) => setEditingPrinter((p) => p && ({ ...p, vidaUtilHoras: e.target.value }))}
+                      placeholder="Vida útil"
+                      className="w-full border border-amber-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-amber-400">h</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setEditingPrinter(null)}
+                    className="flex-1 text-xs py-1.5 rounded-lg border border-amber-200 text-amber-600 hover:bg-amber-50">Cancelar</button>
+                  <button type="button" onClick={saveEditPrinter}
+                    className="flex-1 text-xs py-1.5 rounded-lg bg-amber-500 text-white font-bold hover:opacity-90">Salvar</button>
+                </div>
+              </div>
+            )}
 
             {/* Preset selecionado — detalhes */}
             {form.impressoraAtualId && (() => {

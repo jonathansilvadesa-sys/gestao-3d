@@ -20,8 +20,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   impressoraAtualId: '',
 };
 
-const SETTINGS_KEY       = 'gestao3d_settings';
-const PRINTERS_CUSTOM_KEY = 'gestao3d_printers_custom';
+const SETTINGS_KEY          = 'gestao3d_settings';
+const PRINTERS_CUSTOM_KEY   = 'gestao3d_printers_custom';
+const PRINTERS_OVERRIDES_KEY = 'gestao3d_printers_overrides';
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 const SettingsContext = createContext<SettingsContextType | null>(null);
@@ -42,6 +43,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       return stored ? JSON.parse(stored) : [];
     } catch {
       return [];
+    }
+  });
+
+  const [printerOverrides, setPrinterOverrides] = useState<Record<string, Partial<PrinterProfile>>>(() => {
+    try {
+      const stored = localStorage.getItem(PRINTERS_OVERRIDES_KEY);
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
     }
   });
 
@@ -93,6 +103,29 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     [persistPrinters]
   );
 
+  const updatePrinterOverride = useCallback(
+    (id: string, updates: Partial<Omit<PrinterProfile, 'id' | 'isPreset'>>) => {
+      setPrinterOverrides((prev) => {
+        const next = { ...prev, [id]: { ...(prev[id] ?? {}), ...updates } };
+        localStorage.setItem(PRINTERS_OVERRIDES_KEY, JSON.stringify(next));
+        return next;
+      });
+    },
+    []
+  );
+
+  const resetPrinterOverride = useCallback(
+    (id: string) => {
+      setPrinterOverrides((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        localStorage.setItem(PRINTERS_OVERRIDES_KEY, JSON.stringify(next));
+        return next;
+      });
+    },
+    []
+  );
+
   return (
     <SettingsContext.Provider
       value={{
@@ -102,6 +135,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         addCustomPrinter,
         updateCustomPrinter,
         removeCustomPrinter,
+        printerOverrides,
+        updatePrinterOverride,
+        resetPrinterOverride,
       }}
     >
       {children}
