@@ -9,10 +9,10 @@ import type { Product } from '@/types';
 interface Props {
   products: Product[];
   onSelect: (p: Product) => void;
-  onEditMarkup: (p: Product) => void;
+  onEdit: (p: Product) => void;
 }
 
-export function Dashboard({ products, onSelect, onEditMarkup }: Props) {
+export function Dashboard({ products, onSelect, onEdit }: Props) {
   const [exporting, setExporting] = useState(false);
 
   const totals = useMemo(() => ({
@@ -112,11 +112,11 @@ export function Dashboard({ products, onSelect, onEditMarkup }: Props) {
               </div>
               <Badge v={`${p.markup}x`} bg={COLORS[i % COLORS.length]} />
               <button
-                onClick={() => onEditMarkup(p)}
-                title="Editar markup"
-                className="w-8 h-8 rounded-lg bg-amber-50 hover:bg-amber-100 flex items-center justify-center transition"
+                onClick={() => onEdit(p)}
+                title="Editar peça"
+                className="w-8 h-8 rounded-lg bg-indigo-50 hover:bg-indigo-100 flex items-center justify-center transition"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                 </svg>

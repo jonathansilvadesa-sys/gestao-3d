@@ -22,15 +22,28 @@ export interface Material {
 export const custoPorGrama = (m: Material): number =>
   m.pesoTotal > 0 ? m.precoPago / m.pesoTotal : 0;
 
+// ─── Filamento utilizado em uma peça ─────────────────────────────────────────
+export interface FilamentoUsado {
+  id: number;
+  materialId?: number;  // referência a Material cadastrado (opcional)
+  nome: string;         // label livre: "Base - PLA Preto", "Detalhes - PETG Azul"…
+  peso: number;         // gramas consumidas neste filamento
+  custoKg: number;      // R$/kg (preenchido auto pelo material ou manual)
+}
+
+/** Custo total de um conjunto de filamentos */
+export const calcCustoFilamentos = (filamentos: FilamentoUsado[]): number =>
+  +filamentos.reduce((sum, fl) => sum + (fl.peso / 1000) * fl.custoKg, 0).toFixed(2);
+
 // ─── Peça (produto 3D) ────────────────────────────────────────────────────────
 export interface Product {
   id: number;
   nome: string;
   tempo: number;           // horas
-  peso: number;            // gramas
+  peso: number;            // soma dos pesos dos filamentos (calculado)
   unidades: number;
-  materialId?: number;     // referência ao Material (se selecionado)
-  filamentoCustoKg: number;
+  filamentos: FilamentoUsado[];  // lista de filamentos usados
+  filamentoCustoKg: number;      // mantido para retrocompatibilidade (filamento principal)
   custoFilamento: number;
   potenciaW: number;
   custoKwh: number;
@@ -71,13 +84,11 @@ export interface CalcResult {
 }
 
 // ─── Formulário de nova peça ──────────────────────────────────────────────────
+// filamentos são gerenciados como estado local no NovaModal (FilamentoRow[])
 export interface ProductForm {
   nome: string;
   tempo: string;
-  peso: string;
   unidades: string;
-  materialId: string;      // '' = manual
-  filamentoCustoKg: string;
   potenciaW: string;
   custoKwh: string;
   custoFixoMes: string;

@@ -1,8 +1,14 @@
 import type { Product } from '@/types';
 
+// Helper: cria um array de FilamentoUsado com um único filamento principal
+const fl = (id: number, peso: number, custoKg: number) => ([
+  { id, materialId: undefined, nome: 'Principal', peso, custoKg },
+]);
+
 export const INITIAL_PRODUCTS: Product[] = [
   {
     id: 1, nome: 'Pikachu', tempo: 20, peso: 379, unidades: 25,
+    filamentos: fl(101, 379, 99),
     filamentoCustoKg: 99, custoFilamento: 37.52, potenciaW: 350, custoKwh: 0.84,
     custoEnergia: 2.94, amortizacao: 6.0, custoFixoMes: 300, unidadesMes: 10,
     acessorios: [{ nome: 'Embalagem', qtd: 25, custoUn: 1.0 }, { nome: 'Chaveiro', qtd: 25, custoUn: 1.0 }],
@@ -12,6 +18,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 2, nome: 'Mimikyu', tempo: 33, peso: 160, unidades: 3,
+    filamentos: fl(102, 160, 99),
     filamentoCustoKg: 99, custoFilamento: 15.84, potenciaW: 350, custoKwh: 0.84,
     custoEnergia: 4.85, amortizacao: 9.9, custoFixoMes: 300, unidadesMes: 10,
     acessorios: [{ nome: 'Embalagem', qtd: 1, custoUn: 2.5 }],
@@ -21,6 +28,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 3, nome: 'Grade Fan', tempo: 2, peso: 44, unidades: 3,
+    filamentos: fl(103, 44, 99),
     filamentoCustoKg: 99, custoFilamento: 4.36, potenciaW: 360, custoKwh: 0.84,
     custoEnergia: 0.3, amortizacao: 0.6, custoFixoMes: 300, unidadesMes: 10,
     acessorios: [{ nome: 'Embalagem', qtd: 1, custoUn: 2.5 }],
@@ -30,6 +38,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 4, nome: 'Scratt', tempo: 28, peso: 508.86, unidades: 1,
+    filamentos: fl(104, 508.86, 110),
     filamentoCustoKg: 110, custoFilamento: 55.97, potenciaW: 360, custoKwh: 0.84,
     custoEnergia: 4.23, amortizacao: 8.4, custoFixoMes: 300, unidadesMes: 10,
     acessorios: [{ nome: 'Embalagem', qtd: 1, custoUn: 2.5 }],
@@ -39,6 +48,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 5, nome: 'Suporte Placa de Vídeo', tempo: 2, peso: 20.26, unidades: 1,
+    filamentos: fl(105, 20.26, 110),
     filamentoCustoKg: 110, custoFilamento: 2.23, potenciaW: 360, custoKwh: 0.84,
     custoEnergia: 0.3, amortizacao: 0.6, custoFixoMes: 0, unidadesMes: 40,
     acessorios: [{ nome: 'Embalagem', qtd: 1, custoUn: 2.5 }],
@@ -48,6 +58,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   },
   {
     id: 6, nome: 'Bob Joe', tempo: 3, peso: 29.95, unidades: 1,
+    filamentos: fl(106, 29.95, 110),
     filamentoCustoKg: 110, custoFilamento: 3.29, potenciaW: 360, custoKwh: 0.84,
     custoEnergia: 0.76, amortizacao: 0.9, custoFixoMes: 300, unidadesMes: 10,
     acessorios: [{ nome: 'Embalagem', qtd: 1, custoUn: 2.5 }],

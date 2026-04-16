@@ -111,9 +111,37 @@ export function ProductModal({ product: p, onClose }: Props) {
             </table>
           </div>
 
+          {/* Filamentos */}
+          {p.filamentos && p.filamentos.length > 0 && (
+            <div>
+              <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">🧵 Filamentos Utilizados</p>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-400 text-xs">
+                    <th className="text-left pb-1">Filamento</th>
+                    <th className="text-right pb-1">Peso (g)</th>
+                    <th className="text-right pb-1">R$/kg</th>
+                    <th className="text-right pb-1">Custo</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {p.filamentos.map((fl, i) => (
+                    <tr key={i}>
+                      <td className="py-1 text-gray-700">{fl.nome}</td>
+                      <td className="py-1 text-right text-gray-600">{fl.peso}g</td>
+                      <td className="py-1 text-right text-gray-600">{R(fl.custoKg)}</td>
+                      <td className="py-1 text-right font-medium">{R((fl.peso / 1000) * fl.custoKg)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Acessórios */}
           {p.acessorios.length > 0 && (
             <div>
-              <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">Acessórios e Embalagens</p>
+              <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-2">📦 Acessórios e Embalagens</p>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-gray-400 text-xs">
