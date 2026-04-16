@@ -1,9 +1,10 @@
 import { useState, useMemo, useRef, useEffect, type ChangeEvent } from 'react';
 import { useSettings }  from '@/contexts/SettingsContext';
 import { useMaterials } from '@/contexts/MaterialContext';
+import { useCanais }    from '@/contexts/CanaisContext';
 import { calcProductFromForm, calcMarkupFromMargem } from '@/utils/calc';
 import { R } from '@/utils/formatters';
-import { custoPorGrama, CANAIS_VENDA } from '@/types';
+import { custoPorGrama } from '@/types';
 import { parseGcode, formatarTempo, type GcodeMetadata } from '@/utils/gcodeParser';
 import type { Product, ProductForm } from '@/types';
 
@@ -40,6 +41,7 @@ interface Props {
 export function EditProductModal({ product: p, onClose, onSave }: Props) {
   const { settings }  = useSettings();
   const { materials } = useMaterials();
+  const { canais }    = useCanais();
   const gcodeInputRef = useRef<HTMLInputElement>(null);
 
   // ── Formulário pré-preenchido com os dados da peça ──────────────────────
@@ -492,7 +494,7 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
           <div className="space-y-2">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest pt-1">🛒 Canal de Venda</p>
             <div className="grid grid-cols-3 gap-2">
-              {CANAIS_VENDA.map((canal) => {
+              {canais.map((canal) => {
                 const ativo = f.canalVenda === canal.id;
                 return (
                   <button

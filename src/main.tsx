@@ -4,6 +4,7 @@ import { AuthProvider }     from '@/contexts/AuthContext';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ProductProvider }  from '@/contexts/ProductContext';
 import { MaterialProvider } from '@/contexts/MaterialContext';
+import { CanaisProvider }   from '@/contexts/CanaisContext';
 import './index.css';
 import App from './App';
 
@@ -11,11 +12,13 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
       <SettingsProvider>
-        <ProductProvider>
-          <MaterialProvider>
-            <App />
-          </MaterialProvider>
-        </ProductProvider>
+        <CanaisProvider>
+          <ProductProvider>
+            <MaterialProvider>
+              <App />
+            </MaterialProvider>
+          </ProductProvider>
+        </CanaisProvider>
       </SettingsProvider>
     </AuthProvider>
   </StrictMode>

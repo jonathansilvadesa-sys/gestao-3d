@@ -3,7 +3,7 @@ import { Badge } from '@/components/shared/Badge';
 import { R, COLORS } from '@/utils/formatters';
 import { exportarRelatorioPDF } from '@/utils/exportPdf';
 import type { Product } from '@/types';
-import { CANAIS_VENDA } from '@/types';
+import { useCanais } from '@/contexts/CanaisContext';
 
 interface Props {
   products: Product[];
@@ -13,6 +13,7 @@ interface Props {
 }
 
 export function ProductsTab({ products, onSelect, onEdit, onRemove }: Props) {
+  const { canais } = useCanais();
   const [search, setSearch] = useState('');
   const [exporting, setExporting] = useState(false);
   const filtered = products.filter((p) => p.nome.toLowerCase().includes(search.toLowerCase()));
@@ -76,7 +77,7 @@ export function ProductsTab({ products, onSelect, onEdit, onRemove }: Props) {
                     <div className="flex flex-col">
                       <span className="font-semibold text-gray-800">{p.nome}</span>
                       {p.canalVenda && p.canalVenda !== 'manual' && (() => {
-                        const canal = CANAIS_VENDA.find((c) => c.id === p.canalVenda);
+                        const canal = canais.find((c) => c.id === p.canalVenda);
                         return canal ? (
                           <span className="text-[10px] text-gray-400 leading-none mt-0.5">
                             {canal.emoji} {canal.nome}
