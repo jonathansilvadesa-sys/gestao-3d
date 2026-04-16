@@ -63,6 +63,9 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
     maoObraTaxa:  String(p.maoObraTaxa ?? 0),
   });
 
+  // ── Modo de entrada: dados referem-se ao lote total (mesa cheia) ────────
+  const [isFullBatch, setIsFullBatch] = useState(p.isFullBatch ?? false);
+
   // ── Modo markup vs meta de margem ────────────────────────────────────────
   const [margemModo, setMargemModo] = useState<'markup' | 'margem'>(
     p.margemAlvo != null ? 'margem' : 'markup'
@@ -159,9 +162,9 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
     .map((a) => ({ qtd: parseFloat(a.qtd) || 0, custoUn: parseFloat(a.custo) || 0 }));
 
   const calc = useMemo(
-    () => calcProductFromForm(f, settings, filamentosCalc, acessoriosCalc),
+    () => calcProductFromForm(f, settings, filamentosCalc, acessoriosCalc, isFullBatch),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [f, settings, JSON.stringify(filamentosCalc), JSON.stringify(acessoriosCalc)]
+    [f, settings, JSON.stringify(filamentosCalc), JSON.stringify(acessoriosCalc), isFullBatch]
   );
 
   const pesoTotal = filamentos.reduce((s, fl) => s + (parseFloat(fl.peso) || 0), 0);
@@ -217,7 +220,17 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
         filamentoRowId: newId,
       }]);
     };
-    reader.readAsText(file.slice(0, 80_000));
+    // Lê cabeçalho (80 KB) + rodapé (48 KB) como um único Blob concatenado.
+    // Slicers como Creality gravam tempo e peso no FINAL do arquivo — sem o
+    // rodapé esses metadados seriam invisíveis para o parser.
+    // 48 KB é necessário para capturar o bloco de sumário do Creality (~26 KB
+    // antes do final), que fica ANTES do CONFIG_BLOCK de ~20-26 KB.
+    const HEAD = 80_000;
+    const TAIL = 48_000;
+    const blob = file.size <= HEAD + TAIL
+      ? file
+      : new Blob([file.slice(0, HEAD), '\n', file.slice(file.size - TAIL)]);
+    reader.readAsText(blob);
     e.target.value = '';
   };
 
@@ -272,6 +285,7 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
       maoObraHoras:  +f.maoObraHoras,
       maoObraTaxa:   +f.maoObraTaxa,
       margemAlvo:    margemModo === 'margem' ? parseFloat(margemAlvo) || undefined : undefined,
+      isFullBatch,
       custoTotal:   calc.custoTotal,
       custoUn:      calc.custoUn,
       precoConsumidor:        calc.precoConsumidor,
@@ -391,6 +405,43 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
             </div>
             <NumInput label="Tempo de impressão (h)" k="tempo" />
             <NumInput label="Unidades no lote" k="unidades" step="1" />
+          </div>
+
+          {/* ── Modo de Entrada: Lote Total (Mesa Cheia) ───────────────────── */}
+          <div className={`rounded-2xl border-2 p-3 transition-all ${isFullBatch ? 'border-teal-300 bg-teal-50' : 'border-gray-200 bg-gray-50'}`}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-semibold ${isFullBatch ? 'text-teal-800' : 'text-gray-700'}`}>
+                  Dados referem-se ao Lote Total
+                  <span className="ml-1.5 text-xs font-normal opacity-60">Mesa Cheia</span>
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Ative para G-Code Bambu Lab multicolorido — peso e tempo do lote serão rateados entre as unidades
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFullBatch((v) => !v)}
+                className={`relative inline-flex w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-teal-400 ${
+                  isFullBatch ? 'bg-teal-500' : 'bg-gray-300'
+                }`}
+                aria-pressed={isFullBatch}
+              >
+                <span className={`inline-block w-5 h-5 bg-white rounded-full shadow-sm transition-transform mt-0.5 ${
+                  isFullBatch ? 'translate-x-5' : 'translate-x-0.5'
+                }`} />
+              </button>
+            </div>
+            {isFullBatch && (
+              <div className="mt-2 flex items-start gap-2 bg-teal-100 border border-teal-200 rounded-xl px-3 py-2 text-xs text-teal-800">
+                <span className="shrink-0">ℹ️</span>
+                <span>
+                  Os custos de material e tempo serão rateados entre as{' '}
+                  <strong>{f.unidades || '1'}</strong> unidades,
+                  simulando a economia de purga e trocas de cor.
+                </span>
+              </div>
+            )}
           </div>
 
           {/* FILAMENTOS */}
@@ -711,6 +762,12 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
           {/* Preview */}
           <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-4">
             <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-3">Preview do Cálculo</p>
+            {isFullBatch && (
+              <div className="flex items-center gap-1.5 text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded-lg px-2 py-1.5 mb-3">
+                <span>🗂️</span>
+                <span>Modo lote: peso e tempo ÷ <strong>{f.unidades || 1}</strong> unidades no custo unitário</span>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3 text-sm">
               {([
                 ['Material total',        R(calc.custoFilamento)],

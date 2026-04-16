@@ -79,6 +79,7 @@ export interface Product {
   maoObraHoras: number;    // horas de pós-processamento / acabamento
   maoObraTaxa: number;     // R$/h de mão de obra
   margemAlvo?: number;     // % meta de margem (modo "lucro desejado")
+  isFullBatch?: boolean;   // true = peso/tempo inseridos são do lote total (mesa cheia Bambu)
   // calculados
   custoTotal: number;
   custoUn: number;

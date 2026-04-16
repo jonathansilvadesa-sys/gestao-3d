@@ -95,18 +95,30 @@ export function recalcFromMarkup(
 }
 
 // ─── Cálculo completo da peça ────────────────────────────────────────────────
+// isFullBatch = true → peso e tempo inseridos são do lote inteiro (mesa cheia Bambu Lab).
+// Neste modo, dividimos peso e tempo pelo nº de unidades antes de calcular o custo unitário.
+// Acessórios já possuem lógica de diluição (÷ unidades) — permanecem inalterados.
 export function calcProductFromForm(
   f: ProductForm,
   settings: AppSettings,
   filamentos: Pick<FilamentoUsado, 'peso' | 'custoKg'>[] = [],
-  acessorios: Pick<Accessory, 'qtd' | 'custoUn'>[]       = []
+  acessorios: Pick<Accessory, 'qtd' | 'custoUn'>[]       = [],
+  isFullBatch = false
 ): CalcResult {
-  const tempo        = parseFloat(f.tempo)        || 0;
+  const unidades     = parseFloat(f.unidades)     || 1;
+
+  // Modo lote total: divide peso e tempo pelo lote para obter custo unitário de material e energia
+  const batchDiv      = isFullBatch && unidades > 1 ? unidades : 1;
+  const rawTempo      = parseFloat(f.tempo)        || 0;
+  const tempo         = rawTempo / batchDiv;
+  const adjFilamentos = batchDiv > 1
+    ? filamentos.map((fl) => ({ ...fl, peso: fl.peso / batchDiv }))
+    : filamentos;
+
   const potW         = parseFloat(f.potenciaW)    || settings.potenciaW;
   const kwh          = parseFloat(f.custoKwh)     || settings.custoKwh;
   const fixoMes      = parseFloat(f.custoFixoMes) || settings.custoFixoMes;
   const unidadesMes  = parseFloat(f.unidadesMes)  || settings.unidadesMes;
-  const unidades     = parseFloat(f.unidades)     || 1;
   const markup       = parseFloat(f.markup)       || 1;
   const falhas       = parseFloat(f.falhas)       || settings.falhas;
   const imposto      = parseFloat(f.imposto)      || settings.imposto;
@@ -115,7 +127,7 @@ export function calcProductFromForm(
   const maoObraHoras = parseFloat(f.maoObraHoras) || 0;
   const maoObraTaxa  = parseFloat(f.maoObraTaxa)  || (settings as { maoObraTaxa?: number }).maoObraTaxa || 0;
 
-  const custoFilamento   = calcCustoFilamentos(filamentos);
+  const custoFilamento   = calcCustoFilamentos(adjFilamentos);
   const custoEnergia     = calcCustoEnergia(potW, tempo, kwh);
   const amortizacao      = calcAmortizacao(tempo, settings.amortizacaoHoras, settings.amortizacaoValor);
   const custoFixoRateado = fixoMes / Math.max(unidadesMes, 1);
