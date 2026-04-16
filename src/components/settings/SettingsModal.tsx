@@ -96,6 +96,13 @@ export function SettingsModal({ onClose }: Props) {
             </div>
           </div>
 
+          {/* Mão de Obra */}
+          <div>
+            <p className="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-3">🧑‍🔧 Mão de Obra</p>
+            <Field label="Valor padrão da hora" k="maoObraTaxa" unit="R$/h" />
+            <p className="text-xs text-gray-400 mt-1">Usado como padrão em novas peças. 0 = sem mão de obra.</p>
+          </div>
+
           {/* Contingência */}
           <div>
             <p className="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-3">⚠️ Contingência</p>

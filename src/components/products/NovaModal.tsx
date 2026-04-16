@@ -1,9 +1,9 @@
-import { useState, useMemo, useRef, type ChangeEvent } from 'react';
+import { useState, useMemo, useRef, useEffect, type ChangeEvent } from 'react';
 import { useSettings }  from '@/contexts/SettingsContext';
 import { useMaterials } from '@/contexts/MaterialContext';
-import { calcProductFromForm } from '@/utils/calc';
+import { calcProductFromForm, calcMarkupFromMargem } from '@/utils/calc';
 import { R } from '@/utils/formatters';
-import { custoPorGrama } from '@/types';
+import { custoPorGrama, CANAIS_VENDA } from '@/types';
 import { parseGcode, formatarTempo, type GcodeMetadata } from '@/utils/gcodeParser';
 import type { Product, ProductForm } from '@/types';
 
@@ -59,7 +59,27 @@ export function NovaModal({ onClose, onAdd }: Props) {
     imposto:      String(settings.imposto),
     txCartao:     String(settings.txCartao),
     custoAnuncio: String(settings.custoAnuncio),
+    canalVenda:   'manual',
+    maoObraHoras: '0',
+    maoObraTaxa:  String((settings as { maoObraTaxa?: number }).maoObraTaxa ?? 0),
   });
+
+  // ── Modo markup vs meta de margem ────────────────────────────────────────
+  const [margemModo, setMargemModo] = useState<'markup' | 'margem'>('markup');
+  const [margemAlvo, setMargemAlvo] = useState('30');
+
+  // Quando no modo margem, recalcula o markup automaticamente
+  useEffect(() => {
+    if (margemModo !== 'margem') return;
+    const mk = calcMarkupFromMargem(
+      parseFloat(margemAlvo) || 0,
+      parseFloat(f.imposto) || 0,
+      parseFloat(f.txCartao) || 0,
+      parseFloat(f.custoAnuncio) || 0,
+    );
+    setF((prev) => ({ ...prev, markup: String(mk) }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [margemModo, margemAlvo, f.imposto, f.txCartao, f.custoAnuncio]);
 
   // ── Lista dinâmica de filamentos ──────────────────────────────────────────
   const [filamentos, setFilamentos] = useState<FilamentoRow[]>([{
@@ -250,11 +270,15 @@ export function NovaModal({ onClose, onAdd }: Props) {
       acessorios: acessorios
         .filter((a) => a.nome.trim())
         .map((a) => ({ nome: a.nome, qtd: +a.qtd, custoUn: +a.custo })),
-      markup:       +f.markup,
-      falhas:       +f.falhas,
-      imposto:      +f.imposto,
-      txCartao:     +f.txCartao,
-      custoAnuncio: +f.custoAnuncio,
+      markup:        +f.markup,
+      falhas:        +f.falhas,
+      imposto:       +f.imposto,
+      txCartao:      +f.txCartao,
+      custoAnuncio:  +f.custoAnuncio,
+      canalVenda:    f.canalVenda,
+      maoObraHoras:  +f.maoObraHoras,
+      maoObraTaxa:   +f.maoObraTaxa,
+      margemAlvo:    margemModo === 'margem' ? parseFloat(margemAlvo) || undefined : undefined,
       custoTotal:   calc.custoTotal,
       custoUn:      calc.custoUn,
       precoConsumidor: calc.precoConsumidor,
@@ -491,17 +515,149 @@ export function NovaModal({ onClose, onAdd }: Props) {
             </div>
           </div>
 
+          {/* ── Canal de Venda ────────────────────────────────────────────── */}
+          <div className="space-y-2">
+            <SectionTitle>🛒 Canal de Venda</SectionTitle>
+            <div className="grid grid-cols-3 gap-2">
+              {CANAIS_VENDA.map((canal) => {
+                const ativo = f.canalVenda === canal.id;
+                return (
+                  <button
+                    key={canal.id}
+                    type="button"
+                    onClick={() => {
+                      setF((prev) => ({
+                        ...prev,
+                        canalVenda: canal.id,
+                        custoAnuncio: String(canal.taxaPercent),
+                      }));
+                    }}
+                    className={`flex flex-col items-center gap-0.5 py-2.5 px-2 rounded-xl border-2 text-xs font-semibold transition ${
+                      ativo
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                        : 'border-gray-200 bg-white text-gray-500 hover:border-indigo-300 hover:bg-indigo-50/50'
+                    }`}
+                  >
+                    <span className="text-lg leading-none">{canal.emoji}</span>
+                    <span className="text-center leading-tight">{canal.nome}</span>
+                    {canal.taxaPercent > 0
+                      ? <span className="text-[10px] opacity-70">{canal.taxaPercent}%</span>
+                      : <span className="text-[10px] opacity-50">sem taxa</span>
+                    }
+                  </button>
+                );
+              })}
+            </div>
+            {/* Override manual da taxa */}
+            <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2">
+              <span className="text-xs text-gray-500 flex-1">Taxa da plataforma (editável)</span>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number" min="0" max="100" step="0.5"
+                  value={f.custoAnuncio}
+                  onChange={set('custoAnuncio')}
+                  className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+                <span className="text-xs text-gray-400">%</span>
+              </div>
+            </div>
+          </div>
+
           {/* ── Outros custos ─────────────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-4">
             <NumInput label="Potência da imp. (W)" k="potenciaW" step="1" />
             <NumInput label="Custo kWh (R$)"       k="custoKwh" />
             <NumInput label="Custo Fixo/mês (R$)"  k="custoFixoMes" />
             <NumInput label="Unid. produzidas/mês" k="unidadesMes" step="1" />
-            <NumInput label="Markup"               k="markup" step="0.5" />
             <NumInput label="Taxa de Falhas (%)"   k="falhas" />
             <NumInput label="Imposto (%)"          k="imposto" />
             <NumInput label="Taxa Cartão (%)"      k="txCartao" />
-            <NumInput label="Custo Anúncio (%)"    k="custoAnuncio" />
+          </div>
+
+          {/* ── Mão de Obra ───────────────────────────────────────────────── */}
+          <div className="space-y-2">
+            <SectionTitle>🧑‍🔧 Mão de Obra / Acabamento</SectionTitle>
+            <div className="grid grid-cols-2 gap-3 bg-amber-50 border border-amber-100 rounded-2xl p-3">
+              <div>
+                <label className="text-xs font-semibold text-amber-700">Horas de acabamento</label>
+                <div className="mt-1 flex items-center gap-1">
+                  <input
+                    type="number" min="0" step="0.25"
+                    value={f.maoObraHoras}
+                    onChange={set('maoObraHoras')}
+                    className="flex-1 border border-amber-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                  />
+                  <span className="text-xs text-amber-600">h</span>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-amber-700">Valor da hora (R$)</label>
+                <div className="mt-1 flex items-center gap-1">
+                  <input
+                    type="number" min="0" step="1"
+                    value={f.maoObraTaxa}
+                    onChange={set('maoObraTaxa')}
+                    className="flex-1 border border-amber-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                  />
+                  <span className="text-xs text-amber-600">R$/h</span>
+                </div>
+              </div>
+            </div>
+            {(parseFloat(f.maoObraHoras) > 0 && parseFloat(f.maoObraTaxa) > 0) && (
+              <div className="flex justify-between items-center px-3 py-2 bg-amber-100 rounded-xl text-xs">
+                <span className="text-amber-700">Custo de mão de obra</span>
+                <span className="font-bold text-amber-800">
+                  {R((parseFloat(f.maoObraHoras) || 0) * (parseFloat(f.maoObraTaxa) || 0))}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* ── Markup / Meta de margem ───────────────────────────────────── */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <SectionTitle>📈 Precificação</SectionTitle>
+              <div className="ml-auto flex rounded-xl overflow-hidden border border-gray-200 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setMargemModo('markup')}
+                  className={`px-3 py-1.5 transition ${margemModo === 'markup' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                >Markup fixo</button>
+                <button
+                  type="button"
+                  onClick={() => setMargemModo('margem')}
+                  className={`px-3 py-1.5 transition ${margemModo === 'margem' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                >Meta de margem</button>
+              </div>
+            </div>
+
+            {margemModo === 'markup' ? (
+              <NumInput label="Markup (×)" k="markup" step="0.5" />
+            ) : (
+              <div className="grid grid-cols-2 gap-3 bg-indigo-50 border border-indigo-100 rounded-2xl p-3">
+                <div>
+                  <label className="text-xs font-semibold text-indigo-700">Margem desejada (%)</label>
+                  <div className="mt-1 flex items-center gap-1">
+                    <input
+                      type="number" min="1" max="95" step="1"
+                      value={margemAlvo}
+                      onChange={(e) => setMargemAlvo(e.target.value)}
+                      className="flex-1 border border-indigo-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                    />
+                    <span className="text-xs text-indigo-600">%</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-indigo-700">Markup calculado</label>
+                  <div className="mt-1 bg-indigo-200 rounded-lg px-2 py-1.5 text-sm font-bold text-indigo-800 text-center">
+                    {f.markup}×
+                  </div>
+                </div>
+                <p className="col-span-2 text-xs text-indigo-500 -mt-1">
+                  Markup calculado automaticamente para atingir {margemAlvo}% de margem líquida após impostos e taxas.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* ── Acessórios ─────────────────────────────────────────────────── */}
@@ -594,9 +750,11 @@ export function NovaModal({ onClose, onAdd }: Props) {
             <div className="grid grid-cols-2 gap-3 text-sm">
               {([
                 ['Material total',         R(calc.custoFilamento)],
+                ...(calc.custoMaoObra > 0 ? [['Mão de obra', R(calc.custoMaoObra)] as [string,string]] : []),
                 ['Custo por unidade',      R(calc.custoUn)],
                 ['Custo total do lote',    R(calc.custoTotal)],
                 ['Preço consumidor',       R(calc.precoConsumidor)],
+                ['Margem líq.',            `${calc.margemConsumidor}%`],
                 ['Lucro líq. consumidor',  R(calc.lucroLiquidoConsumidor)],
                 ['Break-even mínimo',      `${calc.breakEvenMarkup}x markup`],
               ] as [string,string][]).map(([k, v]) => (

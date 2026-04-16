@@ -35,6 +35,24 @@ export interface FilamentoUsado {
 export const calcCustoFilamentos = (filamentos: FilamentoUsado[]): number =>
   +filamentos.reduce((sum, fl) => sum + (fl.peso / 1000) * fl.custoKg, 0).toFixed(2);
 
+// ─── Canal de venda ───────────────────────────────────────────────────────────
+export interface CanalVenda {
+  id: string;
+  nome: string;
+  taxaPercent: number;   // % de comissão da plataforma
+  cor: string;           // cor para o badge (classes Tailwind sem prefixo)
+  emoji: string;
+}
+
+export const CANAIS_VENDA: CanalVenda[] = [
+  { id: 'manual',       nome: 'Manual / Direto',   taxaPercent: 0,    cor: 'gray',   emoji: '🤝' },
+  { id: 'mercadolivre', nome: 'Mercado Livre',      taxaPercent: 14,   cor: 'yellow', emoji: '🛒' },
+  { id: 'shopee',       nome: 'Shopee',             taxaPercent: 14,   cor: 'orange', emoji: '🧡' },
+  { id: 'instagram',    nome: 'Instagram / WhatsApp',taxaPercent: 0,   cor: 'pink',   emoji: '📸' },
+  { id: 'etsy',         nome: 'Etsy',               taxaPercent: 6.5,  cor: 'amber',  emoji: '🌿' },
+  { id: 'site',         nome: 'Site próprio',        taxaPercent: 0,    cor: 'blue',   emoji: '🌐' },
+];
+
 // ─── Peça (produto 3D) ────────────────────────────────────────────────────────
 export interface Product {
   id: number;
@@ -56,7 +74,11 @@ export interface Product {
   falhas: number;          // %
   imposto: number;         // %
   txCartao: number;        // %
-  custoAnuncio: number;    // %
+  custoAnuncio: number;    // % (taxa da plataforma)
+  canalVenda: string;      // id do CanalVenda
+  maoObraHoras: number;    // horas de pós-processamento / acabamento
+  maoObraTaxa: number;     // R$/h de mão de obra
+  margemAlvo?: number;     // % meta de margem (modo "lucro desejado")
   // calculados
   custoTotal: number;
   custoUn: number;
@@ -72,6 +94,7 @@ export interface CalcResult {
   custoFilamento: number;
   custoEnergia: number;
   amortizacao: number;
+  custoMaoObra: number;
   custoUn: number;
   custoTotal: number;
   precoConsumidor: number;
@@ -98,6 +121,9 @@ export interface ProductForm {
   imposto: string;
   txCartao: string;
   custoAnuncio: string;
+  canalVenda: string;
+  maoObraHoras: string;
+  maoObraTaxa: string;
 }
 
 // ─── Configurações globais (SettingsContext) ──────────────────────────────────
@@ -113,6 +139,7 @@ export interface AppSettings {
   filamentoCustoKg: number;
   amortizacaoHoras: number;
   amortizacaoValor: number;
+  maoObraTaxa: number;       // R$/h padrão para mão de obra
 }
 
 export interface SettingsContextType {

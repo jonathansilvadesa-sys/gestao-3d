@@ -9,6 +9,30 @@ export function calcBreakEvenMarkup(
   return +(1 / (1 - totalDescontos)).toFixed(2);
 }
 
+// ─── Markup a partir de margem alvo ─────────────────────────────────────────
+// Dada uma meta de margem (%), calcula o markup necessário.
+// Derivação:
+//   preço = custo × markup
+//   lucroLiq = preço × (1 - descontos) - custo
+//   margem  = lucroLiq / preço = (1 - descontos) - 1/markup
+//   → markup = 1 / ((1 - descontos) - margemAlvo/100)
+export function calcMarkupFromMargem(
+  margemAlvo: number,   // % ex: 40
+  imposto: number,
+  txCartao: number,
+  custoAnuncio: number
+): number {
+  const descontos = (imposto + txCartao + custoAnuncio) / 100;
+  const denom = (1 - descontos) - margemAlvo / 100;
+  if (denom <= 0) return 999;
+  return +Math.max(1, 1 / denom).toFixed(2);
+}
+
+// ─── Custo de mão de obra ────────────────────────────────────────────────────
+export function calcCustoMaoObra(taxa: number, horas: number): number {
+  return +(taxa * horas).toFixed(2);
+}
+
 // ─── Energia elétrica ────────────────────────────────────────────────────────
 export function calcCustoEnergia(potenciaW: number, horas: number, custoKwh: number): number {
   return +((potenciaW * horas) / 1000 * custoKwh).toFixed(2);
@@ -87,19 +111,22 @@ export function calcProductFromForm(
   const falhas       = parseFloat(f.falhas)       || settings.falhas;
   const imposto      = parseFloat(f.imposto)      || settings.imposto;
   const txCartao     = parseFloat(f.txCartao)     || settings.txCartao;
-  const custoAnuncio = parseFloat(f.custoAnuncio) || settings.custoAnuncio;
+  const custoAnuncio = parseFloat(f.custoAnuncio) || 0;
+  const maoObraHoras = parseFloat(f.maoObraHoras) || 0;
+  const maoObraTaxa  = parseFloat(f.maoObraTaxa)  || (settings as { maoObraTaxa?: number }).maoObraTaxa || 0;
 
   const custoFilamento   = calcCustoFilamentos(filamentos);
   const custoEnergia     = calcCustoEnergia(potW, tempo, kwh);
   const amortizacao      = calcAmortizacao(tempo, settings.amortizacaoHoras, settings.amortizacaoValor);
   const custoFixoRateado = fixoMes / Math.max(unidadesMes, 1);
   const custoAcess       = calcCustoAcessorios(acessorios, unidades);
+  const custoMaoObra     = calcCustoMaoObra(maoObraTaxa, maoObraHoras);
 
-  const custoBase  = custoFilamento + custoEnergia + amortizacao + custoFixoRateado + custoAcess;
+  const custoBase  = custoFilamento + custoEnergia + amortizacao + custoFixoRateado + custoAcess + custoMaoObra;
   const custoUn    = calcCustoUn(custoBase, falhas);
   const custoTotal = +(custoUn * unidades).toFixed(2);
 
   const prices = recalcFromMarkup(custoUn, markup, imposto, txCartao, custoAnuncio);
 
-  return { custoFilamento, custoEnergia, amortizacao, custoUn, custoTotal, ...prices };
+  return { custoFilamento, custoEnergia, amortizacao, custoMaoObra, custoUn, custoTotal, ...prices };
 }

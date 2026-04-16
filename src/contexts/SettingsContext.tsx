@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   filamentoCustoKg: 99,
   amortizacaoHoras: 20000,
   amortizacaoValor: 6000,
+  maoObraTaxa: 0,         // R$/h de mão de obra (0 = não usa por padrão)
 };
 
 const SETTINGS_KEY = 'gestao3d_settings';
