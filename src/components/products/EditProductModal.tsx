@@ -1,9 +1,10 @@
-import { useState, useMemo, type ChangeEvent } from 'react';
+import { useState, useMemo, useRef, type ChangeEvent } from 'react';
 import { useSettings }  from '@/contexts/SettingsContext';
 import { useMaterials } from '@/contexts/MaterialContext';
 import { calcProductFromForm } from '@/utils/calc';
 import { R } from '@/utils/formatters';
 import { custoPorGrama } from '@/types';
+import { parseGcode, formatarTempo, type GcodeMetadata } from '@/utils/gcodeParser';
 import type { Product, ProductForm } from '@/types';
 
 interface FilamentoRow {
@@ -39,6 +40,7 @@ interface Props {
 export function EditProductModal({ product: p, onClose, onSave }: Props) {
   const { settings }  = useSettings();
   const { materials } = useMaterials();
+  const gcodeInputRef = useRef<HTMLInputElement>(null);
 
   // ── Formulário pré-preenchido com os dados da peça ──────────────────────
   const [f, setF] = useState<ProductForm & { nome: string }>({
@@ -144,6 +146,71 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
   const set = (k: keyof typeof f) => (e: ChangeEvent<HTMLInputElement>) =>
     setF((prev) => ({ ...prev, [k]: e.target.value }));
 
+  // ── G-code: multi-cama (import aditivo) ──────────────────────────────────
+  interface GcodeImport {
+    id: number;
+    fileName: string;
+    meta: GcodeMetadata;
+    filamentoRowId: number;
+  }
+
+  const [gcodeImports, setGcodeImports] = useState<GcodeImport[]>([]);
+
+  const handleGcodeFile = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const meta = parseGcode(text);
+      const mesaNum  = gcodeImports.length + 1;
+      const tipoLabel = meta.tipoFilamento ?? '';
+      const filLabel  = tipoLabel ? `Mesa ${mesaNum} · ${tipoLabel}` : `Mesa ${mesaNum}`;
+
+      // No EditModal sempre adiciona nova linha de filamento
+      const newId = Date.now() + Math.random();
+      setFilamentos((prev) => [...prev, {
+        id:         newId,
+        materialId: '',
+        nome:       filLabel,
+        peso:       meta.pesoG !== undefined ? String(meta.pesoG) : '',
+        custoKg:    String(settings.filamentoCustoKg),
+      }]);
+
+      // Acumula tempo (existente + todas as camas importadas)
+      const tempoBase = parseFloat(f.tempo) || p.tempo;
+      const tempoImportado = [...gcodeImports.map((g) => g.meta.tempoHoras ?? 0), meta.tempoHoras ?? 0]
+        .reduce((a, b) => a + b, 0);
+      const tempoTotal = gcodeImports.length === 0
+        ? tempoImportado  // 1ª importação sobrescreve
+        : tempoBase + (meta.tempoHoras ?? 0);  // demais somam ao atual
+      if (tempoTotal > 0) setF((prev) => ({ ...prev, tempo: tempoTotal.toFixed(4) }));
+
+      setGcodeImports((prev) => [...prev, {
+        id: Date.now(),
+        fileName: file.name,
+        meta,
+        filamentoRowId: newId,
+      }]);
+    };
+    reader.readAsText(file.slice(0, 80_000));
+    e.target.value = '';
+  };
+
+  const removeGcodeImport = (importId: number) => {
+    const imp = gcodeImports.find((g) => g.id === importId);
+    if (!imp) return;
+    const remaining = gcodeImports.filter((g) => g.id !== importId);
+    setFilamentos((prev) => {
+      const next = prev.filter((fl) => fl.id !== imp.filamentoRowId);
+      return next.length > 0 ? next : prev;
+    });
+    const novoTempo = remaining.reduce((a, g) => a + (g.meta.tempoHoras ?? 0), 0);
+    if (novoTempo > 0) setF((prev) => ({ ...prev, tempo: novoTempo.toFixed(4) }));
+    setGcodeImports(remaining);
+  };
+
   // ── Salvar ─────────────────────────────────────────────────────────────
   const handleSave = () => {
     if (!f.nome.trim())             return alert('Preencha o nome da peça.');
@@ -210,15 +277,80 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-t-3xl p-6 text-white flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold">Editar Peça</h2>
-            <p className="text-sm opacity-70 mt-0.5">{p.nome}</p>
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-t-3xl p-6 text-white">
+          <div className="flex justify-between items-start">
+            <div>
+              <h2 className="text-2xl font-bold">Editar Peça</h2>
+              <p className="text-sm opacity-70 mt-0.5">
+                {gcodeImports.length === 0
+                  ? p.nome
+                  : `${p.nome} · ${gcodeImports.length} cama${gcodeImports.length > 1 ? 's' : ''} adicionada${gcodeImports.length > 1 ? 's' : ''}`}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => gcodeInputRef.current?.click()}
+                title="Importar .gcode — adiciona cama de impressão"
+                className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-2 rounded-xl transition"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="12" y1="12" x2="12" y2="18"/>
+                  <polyline points="9 15 12 18 15 15"/>
+                </svg>
+                {gcodeImports.length === 0 ? 'Importar G-code' : `+ Mesa ${gcodeImports.length + 1}`}
+              </button>
+              <input ref={gcodeInputRef} type="file" accept=".gcode,.gco,.g" className="hidden" onChange={handleGcodeFile} />
+              <button onClick={onClose} className="text-3xl font-light opacity-70 hover:opacity-100 leading-none">×</button>
+            </div>
           </div>
-          <button onClick={onClose} className="text-3xl font-light opacity-70 hover:opacity-100">×</button>
         </div>
 
         <div className="p-6 space-y-5">
+
+          {/* ── Camas de Impressão (G-Code multi-parte) ───────────────────── */}
+          {gcodeImports.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">📂 Camas de Impressão</p>
+                <span className="text-xs text-indigo-600 font-semibold bg-indigo-50 px-2 py-0.5 rounded-full">
+                  ⏱ {formatarTempo(gcodeImports.reduce((a, g) => a + (g.meta.tempoHoras ?? 0), 0))} importado
+                  &nbsp;·&nbsp;
+                  ⚖️ {gcodeImports.reduce((a, g) => a + (g.meta.pesoG ?? 0), 0).toFixed(1)}g importado
+                </span>
+              </div>
+              <div className="space-y-2">
+                {gcodeImports.map((imp, idx) => (
+                  <div key={imp.id} className="flex items-start gap-3 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-500 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-700 truncate">{imp.fileName}</p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500 mt-0.5">
+                        {imp.meta.tempoHoras !== undefined && <span>⏱ {formatarTempo(imp.meta.tempoHoras)}</span>}
+                        {imp.meta.pesoG      !== undefined && <span>⚖️ {imp.meta.pesoG}g</span>}
+                        {imp.meta.tipoFilamento            && <span>🧵 {imp.meta.tipoFilamento}</span>}
+                        {imp.meta.alturaLayer !== undefined && <span>📏 layer {imp.meta.alturaLayer}mm</span>}
+                        {imp.meta.slicerNome               && <span className="opacity-60">🖨️ {imp.meta.slicerNome}</span>}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeGcodeImport(imp.id)}
+                      title="Remover esta cama"
+                      className="w-6 h-6 rounded-md bg-red-100 hover:bg-red-200 text-red-400 hover:text-red-600 flex items-center justify-center transition font-bold text-sm shrink-0 mt-0.5"
+                    >×</button>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 text-center pt-0.5">
+                Tempo acumulado e pesos refletidos nos campos abaixo ↓
+              </p>
+            </div>
+          )}
 
           {/* Nome + tempo + unidades */}
           <div className="grid grid-cols-2 gap-4">
