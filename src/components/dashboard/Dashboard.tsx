@@ -15,15 +15,22 @@ interface Props {
 export function Dashboard({ products, onSelect, onEdit }: Props) {
   const [exporting, setExporting] = useState(false);
 
-  const totals = useMemo(() => ({
-    totalPecas:     products.length,
-    totalLucroC:    products.reduce((a, p) => a + p.lucroLiquidoConsumidor, 0),
-    totalLucroL:    products.reduce((a, p) => a + p.lucroLiquidoLojista, 0),
-    avgMarkup:      products.length
-      ? (products.reduce((a, p) => a + p.markup, 0) / products.length).toFixed(1)
-      : '0',
-    maisLucrativo:  [...products].sort((a, b) => b.lucroLiquidoConsumidor - a.lucroLiquidoConsumidor)[0],
-  }), [products]);
+  const totals = useMemo(() => {
+    const comEstoque = products.filter((p) => (p.estoque ?? 0) > 0);
+    return {
+      totalPecas:     products.length,
+      totalLucroC:    products.reduce((a, p) => a + p.lucroLiquidoConsumidor, 0),
+      totalLucroL:    products.reduce((a, p) => a + p.lucroLiquidoLojista, 0),
+      avgMarkup:      products.length
+        ? (products.reduce((a, p) => a + p.markup, 0) / products.length).toFixed(1)
+        : '0',
+      maisLucrativo:  [...products].sort((a, b) => b.lucroLiquidoConsumidor - a.lucroLiquidoConsumidor)[0],
+      // Estoque — visão contábil
+      totalItens:         comEstoque.reduce((a, p) => a + (p.estoque ?? 0), 0),
+      capitalImobilizado: comEstoque.reduce((a, p) => a + (p.estoque ?? 0) * p.custoUn, 0),
+      potencialVenda:     comEstoque.reduce((a, p) => a + (p.estoque ?? 0) * p.precoConsumidor, 0),
+    };
+  }, [products]);
 
   const chartData = products.map((p) => ({
     name:        truncate(p.nome, 10),
@@ -77,6 +84,42 @@ export function Dashboard({ products, onSelect, onEdit }: Props) {
           color="pink"
         />
       </div>
+
+      {/* Estoque — visão contábil */}
+      {totals.totalItens > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="font-bold text-gray-700">📦 Estoque — Visão Contábil</h3>
+              <p className="text-xs text-gray-400 mt-0.5">{totals.totalItens} unidade{totals.totalItens !== 1 ? 's' : ''} em estoque</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {/* Capital Imobilizado — valor patrimonial ao custo */}
+            <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4">
+              <p className="text-xs font-bold text-purple-500 uppercase tracking-widest mb-1">💰 Capital Imobilizado</p>
+              <p className="text-2xl font-bold text-purple-700">{R(totals.capitalImobilizado)}</p>
+              <p className="text-xs text-purple-400 mt-1">
+                Custo de produção parado — dinheiro que saiu do bolso e ainda não voltou
+              </p>
+            </div>
+            {/* Potencial de Venda — valor de mercado */}
+            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+              <p className="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-1">🏷️ Potencial de Venda</p>
+              <p className="text-2xl font-bold text-emerald-700">{R(totals.potencialVenda)}</p>
+              <p className="text-xs text-emerald-400 mt-1">
+                Faturamento bruto estimado se todo o estoque for vendido
+              </p>
+              {/* Margem bruta implícita */}
+              {totals.capitalImobilizado > 0 && (
+                <p className="text-xs font-semibold text-emerald-600 mt-2">
+                  ↑ {((totals.potencialVenda / totals.capitalImobilizado - 1) * 100).toFixed(0)}% acima do custo
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Gráfico */}
       <div className="bg-white rounded-2xl shadow-sm p-5">

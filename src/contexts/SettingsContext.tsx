@@ -8,8 +8,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   txCartao:          5,
   custoAnuncio:      20,
   falhas:            15,
-  custoFixoMes:      300,
-  unidadesMes:       10,
+  custoFixoMes:          300,
+  unidadesMes:           10,   // mantido para retrocompat
+  horasDisponiveisMes:   600,  // horas/mês disponíveis (base do rateio por absorção)
   potenciaW:         350,
   filamentoCustoKg:  99,
   amortizacaoHoras:  20000,

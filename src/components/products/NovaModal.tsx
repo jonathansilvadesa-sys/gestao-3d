@@ -55,8 +55,9 @@ export function NovaModal({ onClose, onAdd }: Props) {
     nome: '', tempo: '', unidades: '1',
     potenciaW:    String(settings.potenciaW),
     custoKwh:     String(settings.custoKwh),
-    custoFixoMes: String(settings.custoFixoMes),
-    unidadesMes:  String(settings.unidadesMes),
+    custoFixoMes:        String(settings.custoFixoMes),
+    unidadesMes:         String(settings.unidadesMes),
+    horasDisponiveisMes: String((settings as { horasDisponiveisMes?: number }).horasDisponiveisMes ?? 600),
     markup:       '5',
     falhas:       String(settings.falhas),
     imposto:      String(settings.imposto),
@@ -290,8 +291,9 @@ export function NovaModal({ onClose, onAdd }: Props) {
       custoKwh:   +f.custoKwh,
       custoEnergia:  calc.custoEnergia,
       amortizacao:   calc.amortizacao,
-      custoFixoMes:  +f.custoFixoMes,
-      unidadesMes:   +f.unidadesMes,
+      custoFixoMes:        +f.custoFixoMes,
+      unidadesMes:         +f.unidadesMes,
+      custoFixoRateado:    calc.custoFixoRateado,
       acessorios: acessorios
         .filter((a) => a.nome.trim())
         .map((a) => ({ nome: a.nome, qtd: +a.qtd, custoUn: +a.custo })),
@@ -635,8 +637,8 @@ export function NovaModal({ onClose, onAdd }: Props) {
           <div className="grid grid-cols-2 gap-4">
             <NumInput label="Potência da imp. (W)" k="potenciaW" step="1" />
             <NumInput label="Custo kWh (R$)"       k="custoKwh" />
-            <NumInput label="Custo Fixo/mês (R$)"  k="custoFixoMes" />
-            <NumInput label="Unid. produzidas/mês" k="unidadesMes" step="1" />
+            <NumInput label="Custo Fixo/mês (R$)"     k="custoFixoMes" />
+            <NumInput label="Horas disponíveis/mês"   k="horasDisponiveisMes" step="1" />
             <NumInput label="Taxa de Falhas (%)"   k="falhas" />
             <NumInput label="Imposto (%)"          k="imposto" />
             <NumInput label="Taxa Cartão (%)"      k="txCartao" />

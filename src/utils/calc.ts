@@ -119,10 +119,10 @@ export function calcProductFromForm(
     ? filamentos.map((fl) => ({ ...fl, peso: fl.peso / batchDiv }))
     : filamentos;
 
-  const potW         = parseFloat(f.potenciaW)    || settings.potenciaW;
-  const kwh          = parseFloat(f.custoKwh)     || settings.custoKwh;
-  const fixoMes      = parseFloat(f.custoFixoMes) || settings.custoFixoMes;
-  const unidadesMes  = parseFloat(f.unidadesMes)  || settings.unidadesMes;
+  const potW              = parseFloat(f.potenciaW)          || settings.potenciaW;
+  const kwh               = parseFloat(f.custoKwh)           || settings.custoKwh;
+  const fixoMes           = parseFloat(f.custoFixoMes)       || settings.custoFixoMes;
+  const horasDisponiveisMes = parseFloat(f.horasDisponiveisMes) || settings.horasDisponiveisMes || 600;
   const markup       = parseFloat(f.markup)       || 1;
   const falhas       = parseFloat(f.falhas)       || settings.falhas;
   const imposto      = parseFloat(f.imposto)      || settings.imposto;
@@ -136,10 +136,15 @@ export function calcProductFromForm(
   // Frete percentual é tratado como desconto no recalcFromMarkup
   const fretePercent   = freteMode === 'percentual' ? (freteValor ?? 0) : 0;
 
+  // Rateio por absorção: custo fixo diluído por horas operacionais disponíveis/mês
+  // custoFixoHora = custoFixoMes ÷ horasDisponiveisMes
+  // custoFixoRateado = tempo da peça × custoFixoHora
+  const custoFixoHora    = fixoMes / Math.max(horasDisponiveisMes, 1);
+
   const custoFilamento   = calcCustoFilamentos(adjFilamentos);
   const custoEnergia     = calcCustoEnergia(potW, tempo, kwh);
   const amortizacao      = calcAmortizacao(tempo, settings.amortizacaoHoras, settings.amortizacaoValor);
-  const custoFixoRateado = fixoMes / Math.max(unidadesMes, 1);
+  const custoFixoRateado = +(tempo * custoFixoHora).toFixed(2);
   const custoAcess       = calcCustoAcessorios(acessorios, unidades);
   const custoMaoObra     = calcCustoMaoObra(maoObraTaxa, maoObraHoras);
 
@@ -157,7 +162,7 @@ export function calcProductFromForm(
       : 0;
 
   return {
-    custoFilamento, custoEnergia, amortizacao, custoMaoObra,
+    custoFilamento, custoEnergia, amortizacao, custoFixoRateado, custoMaoObra,
     custoFrete, custoUn, custoTotal,
     ...prices,
   };

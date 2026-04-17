@@ -167,6 +167,7 @@ export interface Product {
   // Histórico de preços
   historicoPrecos?: PrecoHistorico[];
   // calculados
+  custoFixoRateado?: number;  // tempo × custoFixoHora — alocação por absorção
   custoTotal: number;
   custoUn: number;
   precoConsumidor: number;
@@ -181,6 +182,7 @@ export interface CalcResult {
   custoFilamento: number;
   custoEnergia: number;
   amortizacao: number;
+  custoFixoRateado: number;  // tempo × (custoFixoMes / horasDisponiveisMes)
   custoMaoObra: number;
   custoFrete: number;      // R$ de frete por unidade
   custoUn: number;
@@ -202,7 +204,8 @@ export interface ProductForm {
   potenciaW: string;
   custoKwh: string;
   custoFixoMes: string;
-  unidadesMes: string;
+  unidadesMes: string;          // mantido para retrocompatibilidade
+  horasDisponiveisMes: string;  // substitui unidadesMes no novo modelo
   markup: string;
   falhas: string;
   imposto: string;
@@ -221,7 +224,8 @@ export interface AppSettings {
   custoAnuncio: number;
   falhas: number;
   custoFixoMes: number;
-  unidadesMes: number;
+  unidadesMes: number;               // mantido para retrocompatibilidade
+  horasDisponiveisMes: number;       // horas/mês disponíveis p/ rateio por absorção
   potenciaW: number;
   filamentoCustoKg: number;
   amortizacaoHoras: number;

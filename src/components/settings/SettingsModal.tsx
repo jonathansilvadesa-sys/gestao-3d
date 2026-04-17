@@ -424,10 +424,35 @@ export function SettingsModal({ onClose }: Props) {
           {/* ── CUSTOS FIXOS ─────────────────────────────────────────────────── */}
           <div>
             <p className="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-3">🏭 Custos Fixos</p>
+            <p className="text-xs text-gray-400 -mt-1 mb-3">
+              Rateio por absorção: o custo fixo é dividido pelas horas disponíveis e alocado proporcionalmente ao tempo de impressão de cada peça.
+            </p>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Custo fixo/mês" k="custoFixoMes" unit="R$" />
-              <Field label="Unidades/mês" k="unidadesMes" unit="un." />
+              <Field label="Horas disponíveis/mês" k="horasDisponiveisMes" unit="h" />
             </div>
+            {/* Helper: custo fixo por hora */}
+            {form.horasDisponiveisMes > 0 && (
+              <div className="mt-2 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2 text-xs text-indigo-700 flex items-center gap-2">
+                <span>⚡</span>
+                <span>
+                  Custo fixo/hora:{' '}
+                  <strong>
+                    {(form.custoFixoMes / form.horasDisponiveisMes).toLocaleString('pt-BR', {
+                      style: 'currency', currency: 'BRL', minimumFractionDigits: 2,
+                    })}
+                    /h
+                  </strong>
+                  {' '}— ex: peça de 3h absorve{' '}
+                  <strong>
+                    {(3 * form.custoFixoMes / form.horasDisponiveisMes).toLocaleString('pt-BR', {
+                      style: 'currency', currency: 'BRL', minimumFractionDigits: 2,
+                    })}
+                  </strong>
+                  {' '}de custo fixo
+                </span>
+              </div>
+            )}
           </div>
 
           {/* ── MÃO DE OBRA ──────────────────────────────────────────────────── */}

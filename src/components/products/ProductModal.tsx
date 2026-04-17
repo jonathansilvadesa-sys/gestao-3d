@@ -49,7 +49,7 @@ export function ProductModal({ product: p, onClose }: Props) {
     { name: 'Filamento',   value: p.custoFilamento },
     { name: 'Energia',     value: p.custoEnergia },
     { name: 'Amortização', value: p.amortizacao },
-    { name: 'Custo Fixo',  value: p.custoFixoMes > 0 ? +(p.custoFixoMes / p.unidadesMes).toFixed(2) : 0 },
+    { name: 'Custo Fixo',  value: p.custoFixoRateado ?? +(p.custoFixoMes / Math.max(p.unidadesMes, 1)).toFixed(2) },
     { name: 'Acessórios',  value: custoAcess / p.unidades },
     ...((p.maoObraHoras ?? 0) > 0 && (p.maoObraTaxa ?? 0) > 0
       ? [{ name: 'Mão de Obra', value: (p.maoObraHoras ?? 0) * (p.maoObraTaxa ?? 0) }]
@@ -298,7 +298,14 @@ export function ProductModal({ product: p, onClose }: Props) {
                   ['Filamento',                    R(p.custoFilamento)],
                   ['Energia elétrica',             R(p.custoEnergia)],
                   ['Amortização da impressora',    R(p.amortizacao)],
-                  ['Custo fixo rateado',           R(p.custoFixoMes > 0 ? p.custoFixoMes / p.unidadesMes : 0)],
+                  ['Custo fixo rateado', (() => {
+                    const val = p.custoFixoRateado ?? (p.custoFixoMes > 0 ? p.custoFixoMes / Math.max(p.unidadesMes, 1) : 0);
+                    // custo/h = valor / tempo (se temos custoFixoRateado salvo); fallback para antigo
+                    const custoPorHora = p.custoFixoRateado && p.tempo > 0
+                      ? p.custoFixoRateado / p.tempo
+                      : p.custoFixoMes / Math.max(p.unidadesMes, 1);
+                    return `${R(val)} (${p.tempo}h × ${R(custoPorHora)}/h)`;
+                  })()],
                   ['Acessórios / embalagem',       R(custoAcess)],
                   ...((p.maoObraHoras ?? 0) > 0 && (p.maoObraTaxa ?? 0) > 0
                     ? [['Mão de obra', R((p.maoObraHoras ?? 0) * (p.maoObraTaxa ?? 0))] as [string,string]]

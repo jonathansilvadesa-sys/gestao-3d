@@ -61,8 +61,9 @@ export function EstoqueTab({ products, onUpdateEstoque }: Props) {
                 </div>
 
                 <div className="text-right hidden sm:block">
-                  <p className="text-xs text-gray-400">Valor em estoque</p>
-                  <p className="font-semibold text-gray-700">{R(estoque * p.precoConsumidor)}</p>
+                  <p className="text-xs text-purple-400 font-semibold">Capital imobilizado</p>
+                  <p className="font-bold text-purple-700">{R(estoque * p.custoUn)}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Venda: {R(estoque * p.precoConsumidor)}</p>
                 </div>
 
                 <div className="flex items-center gap-2 flex-shrink-0">

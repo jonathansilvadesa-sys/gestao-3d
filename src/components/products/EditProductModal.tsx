@@ -52,8 +52,9 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
     unidades:     String(p.unidades),
     potenciaW:    String(p.potenciaW),
     custoKwh:     String(p.custoKwh),
-    custoFixoMes: String(p.custoFixoMes),
-    unidadesMes:  String(p.unidadesMes),
+    custoFixoMes:        String(p.custoFixoMes),
+    unidadesMes:         String(p.unidadesMes),
+    horasDisponiveisMes: String((settings as { horasDisponiveisMes?: number }).horasDisponiveisMes ?? 600),
     markup:       String(p.markup),
     falhas:       String(p.falhas),
     imposto:      String(p.imposto),
@@ -292,8 +293,9 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
       custoKwh:   +f.custoKwh,
       custoEnergia:  calc.custoEnergia,
       amortizacao:   calc.amortizacao,
-      custoFixoMes:  +f.custoFixoMes,
-      unidadesMes:   +f.unidadesMes,
+      custoFixoMes:        +f.custoFixoMes,
+      unidadesMes:         +f.unidadesMes,
+      custoFixoRateado:    calc.custoFixoRateado,
       acessorios: acessorios
         .filter((a) => a.nome.trim())
         .map((a) => ({ nome: a.nome, qtd: +a.qtd, custoUn: +a.custo })),
@@ -615,8 +617,8 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
           <div className="grid grid-cols-2 gap-4">
             <NumInput label="Potência da imp. (W)" k="potenciaW" step="1" />
             <NumInput label="Custo kWh (R$)"       k="custoKwh" />
-            <NumInput label="Custo Fixo/mês (R$)"  k="custoFixoMes" />
-            <NumInput label="Unid. produzidas/mês" k="unidadesMes" step="1" />
+            <NumInput label="Custo Fixo/mês (R$)"   k="custoFixoMes" />
+            <NumInput label="Horas disponíveis/mês" k="horasDisponiveisMes" step="1" />
             <NumInput label="Taxa de Falhas (%)"   k="falhas" />
             <NumInput label="Imposto (%)"          k="imposto" />
             <NumInput label="Taxa Cartão (%)"      k="txCartao" />
