@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, Legend,
+} from 'recharts';
 import { R, pct, margem, COLORS } from '@/utils/formatters';
 import { recalcFromMarkup, calcMarkupFromMargem } from '@/utils/calc';
 import { useCanais } from '@/contexts/CanaisContext';
@@ -443,6 +446,94 @@ export function ProductModal({ product: p, onClose }: Props) {
               </div>
             </div>
           )}
+          {/* ── Ponto de Equilíbrio ──────────────────────────────────────── */}
+          {(() => {
+            const lote      = p.estoque > 0 ? p.estoque : p.unidades;
+            const capital   = +(p.custoUn * lote).toFixed(2);
+            const lucroUnit = p.lucroLiquidoConsumidor;
+
+            if (lucroUnit <= 0) return (
+              <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-700">
+                <p className="font-bold">⚠️ Ponto de Equilíbrio</p>
+                <p className="text-xs mt-1">Lucro líquido por unidade é zero ou negativo. Revise o markup ou as taxas.</p>
+              </div>
+            );
+
+            const breakevenUnits = Math.ceil(capital / lucroUnit);
+            const maxX = Math.max(breakevenUnits * 1.5, lote);
+            const step = Math.max(1, Math.ceil(maxX / 10));
+
+            const chartData = Array.from({ length: Math.ceil(maxX / step) + 1 }, (_, i) => {
+              const x = i * step;
+              return {
+                unidades:             x,
+                'Capital Recuperado': +(x * lucroUnit).toFixed(2),
+                'Capital Investido':  capital,
+              };
+            });
+
+            const pct = Math.min(100, Math.round((lote / breakevenUnits) * 100));
+
+            return (
+              <div>
+                <p className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">📊 Ponto de Equilíbrio</p>
+
+                {/* Resumo */}
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 text-center">
+                    <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest">Capital no Lote</p>
+                    <p className="text-lg font-bold text-purple-700 mt-0.5">{R(capital)}</p>
+                    <p className="text-xs text-purple-400">{lote} un. × {R(p.custoUn)}</p>
+                  </div>
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-center">
+                    <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Lucro por Venda</p>
+                    <p className="text-lg font-bold text-emerald-700 mt-0.5">{R(lucroUnit)}</p>
+                    <p className="text-xs text-emerald-400">líquido / unidade</p>
+                  </div>
+                  <div className={`border rounded-xl p-3 text-center ${
+                    p.estoque >= breakevenUnits
+                      ? 'bg-green-50 border-green-100'
+                      : 'bg-amber-50 border-amber-100'
+                  }`}>
+                    <p className={`text-[10px] font-bold uppercase tracking-widest ${
+                      p.estoque >= breakevenUnits ? 'text-green-400' : 'text-amber-400'
+                    }`}>Break-even</p>
+                    <p className={`text-lg font-bold mt-0.5 ${
+                      p.estoque >= breakevenUnits ? 'text-green-700' : 'text-amber-700'
+                    }`}>{breakevenUnits} un.</p>
+                    <p className={`text-xs ${p.estoque >= breakevenUnits ? 'text-green-500' : 'text-amber-500'}`}>
+                      {p.estoque > 0
+                        ? p.estoque >= breakevenUnits
+                          ? `✅ ${p.estoque} em estoque — já coberto`
+                          : `${p.estoque} em estoque (${pct}%)`
+                        : `sem estoque no momento`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Gráfico */}
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="unidades" tick={{ fontSize: 11 }}
+                      label={{ value: 'unidades vendidas', position: 'insideBottom', offset: -2, fontSize: 10, fill: '#9CA3AF' }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `R$${v}`} width={70} />
+                    <Tooltip formatter={(v: number) => R(v)} labelFormatter={(l) => `${l} un.`} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <ReferenceLine x={breakevenUnits} stroke="#f59e0b" strokeDasharray="4 4"
+                      label={{ value: `break-even: ${breakevenUnits}`, position: 'top', fontSize: 10, fill: '#d97706' }} />
+                    {p.estoque > 0 && (
+                      <ReferenceLine x={p.estoque} stroke="#8b5cf6" strokeDasharray="4 4"
+                        label={{ value: `estoque: ${p.estoque}`, position: 'insideTopRight', fontSize: 10, fill: '#7c3aed' }} />
+                    )}
+                    <Line dataKey="Capital Recuperado" stroke="#10b981" strokeWidth={2} dot={false} />
+                    <Line dataKey="Capital Investido"  stroke="#8b5cf6" strokeWidth={2} dot={false} strokeDasharray="5 5" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            );
+          })()}
+
         </div>
       </div>
     </div>

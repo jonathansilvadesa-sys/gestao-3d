@@ -166,6 +166,9 @@ export interface Product {
   impressoraId?: string;   // id do PrinterProfile usado
   // Histórico de preços
   historicoPrecos?: PrecoHistorico[];
+  // impressora usada nesta peça (override dos globais)
+  amortizacaoValor?: number;  // R$ da impressora usada (armazenado para recalcular)
+  amortizacaoHoras?: number;  // vida útil em horas da impressora usada
   // calculados
   custoFixoRateado?: number;  // tempo × custoFixoHora — alocação por absorção
   custoTotal: number;
@@ -203,6 +206,8 @@ export interface ProductForm {
   unidades: string;
   potenciaW: string;
   custoKwh: string;
+  amortizacaoValor: string;     // R$ — valor da impressora (override por peça)
+  amortizacaoHoras: string;     // h  — vida útil da impressora (override por peça)
   custoFixoMes: string;
   unidadesMes: string;          // mantido para retrocompatibilidade
   horasDisponiveisMes: string;  // substitui unidadesMes no novo modelo

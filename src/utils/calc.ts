@@ -141,9 +141,13 @@ export function calcProductFromForm(
   // custoFixoRateado = tempo da peça × custoFixoHora
   const custoFixoHora    = fixoMes / Math.max(horasDisponiveisMes, 1);
 
+  // Amortização: usa valores do form (impressora selecionada por peça) ou fallback do settings
+  const amorValor  = parseFloat(f.amortizacaoValor) || settings.amortizacaoValor;
+  const amorHoras  = parseFloat(f.amortizacaoHoras) || settings.amortizacaoHoras;
+
   const custoFilamento   = calcCustoFilamentos(adjFilamentos);
   const custoEnergia     = calcCustoEnergia(potW, tempo, kwh);
-  const amortizacao      = calcAmortizacao(tempo, settings.amortizacaoHoras, settings.amortizacaoValor);
+  const amortizacao      = calcAmortizacao(tempo, amorHoras, amorValor);
   const custoFixoRateado = +(tempo * custoFixoHora).toFixed(2);
   const custoAcess       = calcCustoAcessorios(acessorios, unidades);
   const custoMaoObra     = calcCustoMaoObra(maoObraTaxa, maoObraHoras);

@@ -45,7 +45,7 @@ interface Props { onClose: () => void; onAdd: (p: Product) => void; }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 export function NovaModal({ onClose, onAdd }: Props) {
-  const { settings }  = useSettings();
+  const { settings, customPrinters, printerOverrides } = useSettings();
   const { materials } = useMaterials();
   const { canais }    = useCanais();
   const gcodeInputRef = useRef<HTMLInputElement>(null);
@@ -53,8 +53,10 @@ export function NovaModal({ onClose, onAdd }: Props) {
   // ── Formulário principal (sem filamento/peso — são dinâmicos) ──────────────
   const [f, setF] = useState<ProductForm>({
     nome: '', tempo: '', unidades: '1',
-    potenciaW:    String(settings.potenciaW),
-    custoKwh:     String(settings.custoKwh),
+    potenciaW:         String(settings.potenciaW),
+    custoKwh:          String(settings.custoKwh),
+    amortizacaoValor:  String(settings.amortizacaoValor),
+    amortizacaoHoras:  String(settings.amortizacaoHoras),
     custoFixoMes:        String(settings.custoFixoMes),
     unidadesMes:         String(settings.unidadesMes),
     horasDisponiveisMes: String((settings as { horasDisponiveisMes?: number }).horasDisponiveisMes ?? 600),
@@ -79,6 +81,22 @@ export function NovaModal({ onClose, onAdd }: Props) {
 
   // ── Impressora ───────────────────────────────────────────────────────────
   const [impressoraId, setImpressoraId] = useState(settings.impressoraAtualId ?? '');
+  const allPrinters = useMemo(() => [
+    ...PRINTER_PRESETS.map((p) => ({ ...p, ...(printerOverrides[p.id] ?? {}) })),
+    ...customPrinters,
+  ], [customPrinters, printerOverrides]);
+
+  const applyPrinterToForm = (pid: string) => {
+    const p = allPrinters.find((x) => x.id === pid);
+    if (!p) return;
+    setImpressoraId(pid);
+    setF((prev) => ({
+      ...prev,
+      potenciaW:        String(p.potenciaW),
+      amortizacaoValor: String(p.valorMaquina),
+      amortizacaoHoras: String(p.vidaUtilHoras),
+    }));
+  };
 
   // ── Modo markup vs meta de margem ────────────────────────────────────────
   const [margemModo, setMargemModo] = useState<'markup' | 'margem'>('markup');
@@ -294,6 +312,8 @@ export function NovaModal({ onClose, onAdd }: Props) {
       custoFixoMes:        +f.custoFixoMes,
       unidadesMes:         +f.unidadesMes,
       custoFixoRateado:    calc.custoFixoRateado,
+      amortizacaoValor:    +f.amortizacaoValor || settings.amortizacaoValor,
+      amortizacaoHoras:    +f.amortizacaoHoras || settings.amortizacaoHoras,
       acessorios: acessorios
         .filter((a) => a.nome.trim())
         .map((a) => ({ nome: a.nome, qtd: +a.qtd, custoUn: +a.custo })),
@@ -633,12 +653,63 @@ export function NovaModal({ onClose, onAdd }: Props) {
             </div>
           </div>
 
+          {/* ── Seletor de Impressora ─────────────────────────────────────── */}
+          <div>
+            <SectionTitle>🖨️ Impressora Utilizada</SectionTitle>
+            <p className="text-xs text-gray-400 mb-2">Selecionar ajusta automaticamente potência e amortização</p>
+            <div className="space-y-1.5">
+              {[...new Set(allPrinters.map((p) => p.marca))].map((marca) => (
+                <div key={marca} className="flex flex-wrap gap-1.5 items-center">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase w-16 shrink-0">{marca}</span>
+                  {allPrinters.filter((p) => p.marca === marca).map((p) => {
+                    const ativo = impressoraId === p.id;
+                    return (
+                      <button key={p.id} type="button"
+                        onClick={() => applyPrinterToForm(p.id)}
+                        title={`${p.potenciaW}W · R$ ${p.valorMaquina.toLocaleString()} · ${p.vidaUtilHoras.toLocaleString()}h`}
+                        className={`px-2.5 py-1 rounded-lg border text-xs font-semibold transition ${
+                          ativo
+                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
+                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                        }`}>
+                        {p.nome}{ativo && ' ✓'}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+            {impressoraId && (() => {
+              const p = allPrinters.find((x) => x.id === impressoraId);
+              if (!p) return null;
+              return (
+                <div className="mt-2 flex items-center justify-between bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2 text-xs text-indigo-700">
+                  <span>
+                    <strong>{p.marca} {p.nome}</strong>
+                    {' · '}{p.potenciaW}W{' · '}R$ {p.valorMaquina.toLocaleString()}{' · '}{p.vidaUtilHoras.toLocaleString()}h
+                  </span>
+                  <button type="button" onClick={() => {
+                    setImpressoraId('');
+                    setF((prev) => ({
+                      ...prev,
+                      potenciaW:        String(settings.potenciaW),
+                      amortizacaoValor: String(settings.amortizacaoValor),
+                      amortizacaoHoras: String(settings.amortizacaoHoras),
+                    }));
+                  }} className="ml-2 text-indigo-400 hover:text-indigo-700">✕</button>
+                </div>
+              );
+            })()}
+          </div>
+
           {/* ── Outros custos ─────────────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-4">
-            <NumInput label="Potência da imp. (W)" k="potenciaW" step="1" />
-            <NumInput label="Custo kWh (R$)"       k="custoKwh" />
-            <NumInput label="Custo Fixo/mês (R$)"     k="custoFixoMes" />
-            <NumInput label="Horas disponíveis/mês"   k="horasDisponiveisMes" step="1" />
+            <NumInput label="Potência da imp. (W)"  k="potenciaW" step="1" />
+            <NumInput label="Custo kWh (R$)"        k="custoKwh" />
+            <NumInput label="Valor da impressora (R$)"  k="amortizacaoValor" />
+            <NumInput label="Vida útil (h)"            k="amortizacaoHoras" step="1" />
+            <NumInput label="Custo Fixo/mês (R$)"      k="custoFixoMes" />
+            <NumInput label="Horas disponíveis/mês"    k="horasDisponiveisMes" step="1" />
             <NumInput label="Taxa de Falhas (%)"   k="falhas" />
             <NumInput label="Imposto (%)"          k="imposto" />
             <NumInput label="Taxa Cartão (%)"      k="txCartao" />
