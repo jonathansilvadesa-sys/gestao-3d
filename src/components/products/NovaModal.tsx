@@ -1,7 +1,8 @@
 import { useState, useMemo, useRef, useEffect, type ChangeEvent } from 'react';
-import { useSettings }  from '@/contexts/SettingsContext';
-import { useMaterials } from '@/contexts/MaterialContext';
-import { useCanais }    from '@/contexts/CanaisContext';
+import { useSettings }    from '@/contexts/SettingsContext';
+import { useMaterials }   from '@/contexts/MaterialContext';
+import { useCanais }      from '@/contexts/CanaisContext';
+import { useAcessorios }  from '@/contexts/AcessorioContext';
 import { PRINTER_PRESETS } from '@/types';
 import { calcProductFromForm, calcMarkupFromMargem } from '@/utils/calc';
 import { R } from '@/utils/formatters';
@@ -23,6 +24,8 @@ interface AcessorioRow {
   nome: string;
   qtd: string;
   custo: string;
+  catalogId?: string;    // vínculo com AcessorioEstoque
+  varianteId?: string;
 }
 
 const ACESS_SUGESTOES = [
@@ -46,9 +49,11 @@ interface Props { onClose: () => void; onAdd: (p: Product) => void; }
 // ═══════════════════════════════════════════════════════════════════════════════
 export function NovaModal({ onClose, onAdd }: Props) {
   const { settings, customPrinters, printerOverrides } = useSettings();
-  const { materials } = useMaterials();
-  const { canais }    = useCanais();
+  const { materials }   = useMaterials();
+  const { canais }      = useCanais();
+  const { acessorios: catalogoAcess } = useAcessorios();
   const gcodeInputRef = useRef<HTMLInputElement>(null);
+  const [showCatalogPicker, setShowCatalogPicker] = useState(false);
 
   // ── Formulário principal (sem filamento/peso — são dinâmicos) ──────────────
   const [f, setF] = useState<ProductForm>({
@@ -167,6 +172,22 @@ export function NovaModal({ onClose, onAdd }: Props) {
   const aplicarSugestao = (s: (typeof ACESS_SUGESTOES)[0]) => {
     if (acessorios.some((a) => a.nome === s.nome)) return;
     setAcessorios((prev) => [...prev, { id: Date.now() + Math.random(), ...s }]);
+  };
+
+  const aplicarDoCatalogo = (acessId: string, varId: string) => {
+    const acess = catalogoAcess.find((a) => a.id === acessId);
+    const variante = acess?.variantes.find((v) => v.id === varId);
+    if (!acess || !variante) return;
+    const label = variante.tamanho ? `${acess.nome} (${variante.tamanho})` : acess.nome;
+    setAcessorios((prev) => [...prev, {
+      id: Date.now() + Math.random(),
+      nome: label,
+      qtd: '1',
+      custo: String(variante.custoUn),
+      catalogId: acessId,
+      varianteId: varId,
+    }]);
+    setShowCatalogPicker(false);
   };
 
   // ── Arrays para o calc ─────────────────────────────────────────────────────
@@ -316,7 +337,11 @@ export function NovaModal({ onClose, onAdd }: Props) {
       amortizacaoHoras:    +f.amortizacaoHoras || settings.amortizacaoHoras,
       acessorios: acessorios
         .filter((a) => a.nome.trim())
-        .map((a) => ({ nome: a.nome, qtd: +a.qtd, custoUn: +a.custo })),
+        .map((a) => ({
+          nome: a.nome, qtd: +a.qtd, custoUn: +a.custo,
+          catalogId: a.catalogId,
+          varianteId: a.varianteId,
+        })),
       markup:        +f.markup,
       falhas:        +f.falhas,
       imposto:       +f.imposto,
@@ -803,19 +828,66 @@ export function NovaModal({ onClose, onAdd }: Props) {
 
           {/* ── Acessórios ─────────────────────────────────────────────────── */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <SectionTitle>📦 Acessórios / Insumos Extras</SectionTitle>
-              <button
-                type="button"
-                onClick={addAcessorio}
-                className="flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
-                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Adicionar item
-              </button>
+              <div className="flex gap-2">
+                {catalogoAcess.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowCatalogPicker((v) => !v)}
+                    className="flex items-center gap-1 text-xs font-bold text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition"
+                  >
+                    🔩 Do catálogo
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={addAcessorio}
+                  className="flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Adicionar item
+                </button>
+              </div>
             </div>
+
+            {/* Picker do catálogo */}
+            {showCatalogPicker && (
+              <div className="bg-purple-50 border border-purple-100 rounded-2xl p-3 space-y-2">
+                <p className="text-xs font-bold text-purple-600 uppercase tracking-widest">Selecionar do Catálogo</p>
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {catalogoAcess.map((cat) => (
+                    <div key={cat.id}>
+                      {cat.variantes.map((v) => (
+                        <button
+                          key={v.id}
+                          type="button"
+                          onClick={() => aplicarDoCatalogo(cat.id, v.id)}
+                          className="w-full text-left flex items-center justify-between px-3 py-2 rounded-xl hover:bg-purple-100 transition text-sm"
+                        >
+                          <span className="font-medium text-gray-700">
+                            {cat.nome}{v.tamanho ? ` (${v.tamanho})` : ''}
+                          </span>
+                          <div className="flex items-center gap-3 text-xs text-gray-500">
+                            <span className={v.estoqueAtual <= v.estoqueMinimo ? 'text-red-500 font-bold' : ''}>
+                              Estoque: {v.estoqueAtual} {cat.unidade}
+                            </span>
+                            <span className="font-semibold text-purple-700">{R(v.custoUn)}/un.</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCatalogPicker(false)}
+                  className="text-xs text-gray-400 hover:text-gray-600"
+                >Fechar</button>
+              </div>
+            )}
 
             {/* Sugestões */}
             <div className="flex flex-wrap gap-1.5">
@@ -844,13 +916,16 @@ export function NovaModal({ onClose, onAdd }: Props) {
                 </p>
               )}
               {acessorios.map((a, idx) => (
-                <div key={a.id} className="grid grid-cols-[1fr_80px_90px_32px] gap-2 items-center bg-gray-50 rounded-xl px-3 py-2">
+                <div key={a.id} className={`grid grid-cols-[1fr_80px_90px_32px] gap-2 items-center rounded-xl px-3 py-2 ${a.catalogId ? 'bg-purple-50 border border-purple-100' : 'bg-gray-50'}`}>
                   <div>
                     {idx === 0 && <p className="text-xs text-gray-400 mb-0.5">Nome</p>}
-                    <input type="text" value={a.nome} onChange={(e) => updateAcessorio(a.id, 'nome', e.target.value)}
-                      placeholder="Ex: Imã, LED…"
-                      className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                    />
+                    <div className="flex items-center gap-1">
+                      {a.catalogId && <span className="text-purple-500 text-xs" title="Vinculado ao catálogo">🔗</span>}
+                      <input type="text" value={a.nome} onChange={(e) => updateAcessorio(a.id, 'nome', e.target.value)}
+                        placeholder="Ex: Imã, LED…"
+                        className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                      />
+                    </div>
                   </div>
                   <div>
                     {idx === 0 && <p className="text-xs text-gray-400 mb-0.5">Qtd</p>}

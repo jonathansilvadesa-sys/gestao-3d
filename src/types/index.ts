@@ -3,6 +3,8 @@ export interface Accessory {
   nome: string;
   qtd: number;
   custoUn: number;
+  catalogId?: string;   // id do AcessorioEstoque (vínculo com catálogo)
+  varianteId?: string;  // id da AcessorioVariante
 }
 
 // ─── Material (rolo de filamento) ─────────────────────────────────────────────
@@ -241,6 +243,10 @@ export interface AppSettings {
   freteValor: number;
   // Impressora ativa
   impressoraAtualId: string; // '' = sem preset selecionado
+  // Meta de faturamento mensal
+  metaFaturamento: number;
+  faturamentoMesAtual: number;   // acumulado do mês atual (gerenciado automaticamente)
+  faturamentoMesRef: string;     // 'YYYY-MM' de referência para reset automático
 }
 
 export interface SettingsContextType {
@@ -255,6 +261,9 @@ export interface SettingsContextType {
   printerOverrides: Record<string, Partial<PrinterProfile>>;
   updatePrinterOverride: (id: string, updates: Partial<Omit<PrinterProfile, 'id' | 'isPreset'>>) => void;
   resetPrinterOverride:  (id: string) => void;
+  // Faturamento mensal
+  registrarVenda:        (valor: number) => void;
+  resetFaturamentoMes:   () => void;
 }
 
 // ─── ProductContext ───────────────────────────────────────────────────────────

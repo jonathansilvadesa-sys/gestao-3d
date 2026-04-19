@@ -468,6 +468,15 @@ export function SettingsModal({ onClose }: Props) {
             <Field label="Taxa de falhas" k="falhas" unit="%" />
           </div>
 
+          {/* ── META DE FATURAMENTO ───────────────────────────────────────────── */}
+          <div>
+            <p className="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-3">🎯 Meta de Faturamento Mensal</p>
+            <p className="text-xs text-gray-400 -mt-1 mb-3">
+              Defina uma meta de receita bruta por mês. Ao reduzir o estoque na aba Estoque, as vendas são registradas automaticamente. Use 0 para não exibir a meta.
+            </p>
+            <Field label="Meta de receita mensal" k="metaFaturamento" unit="R$" />
+          </div>
+
           {/* ── CANAIS DE VENDA ───────────────────────────────────────────────── */}
           <div className="border-t border-gray-100 pt-6">
             <div className="flex items-center justify-between mb-4">

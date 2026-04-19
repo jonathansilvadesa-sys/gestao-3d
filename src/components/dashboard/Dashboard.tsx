@@ -4,6 +4,8 @@ import { StatCard } from '@/components/shared/StatCard';
 import { Badge } from '@/components/shared/Badge';
 import { R, margem, COLORS, truncate } from '@/utils/formatters';
 import { exportarRelatorioPDF } from '@/utils/exportPdf';
+import { useSettings } from '@/contexts/SettingsContext';
+import { PrinterComparatorModal } from '@/components/printers/PrinterComparatorModal';
 import type { Product } from '@/types';
 
 interface Props {
@@ -14,6 +16,14 @@ interface Props {
 
 export function Dashboard({ products, onSelect, onEdit }: Props) {
   const [exporting, setExporting] = useState(false);
+  const [showComparator, setShowComparator] = useState(false);
+  const { settings, resetFaturamentoMes } = useSettings();
+
+  const mesAtual = new Date().toISOString().slice(0, 7);
+  // Auto-reset faturamento se o mês mudou
+  const faturamentoMes = settings.faturamentoMesRef === mesAtual
+    ? settings.faturamentoMesAtual
+    : 0;
 
   const totals = useMemo(() => {
     const comEstoque = products.filter((p) => (p.estoque ?? 0) > 0);
@@ -30,6 +40,30 @@ export function Dashboard({ products, onSelect, onEdit }: Props) {
       capitalImobilizado: comEstoque.reduce((a, p) => a + (p.estoque ?? 0) * p.custoUn, 0),
       potencialVenda:     comEstoque.reduce((a, p) => a + (p.estoque ?? 0) * p.precoConsumidor, 0),
     };
+  }, [products]);
+
+  // ── Alertas de Break-even ─────────────────────────────────────────────────
+  const alertasBreakeeven = useMemo(() => {
+    return products
+      .filter((p) => {
+        if (p.lucroLiquidoConsumidor <= 0) return false;
+        const lote = p.estoque > 0 ? p.estoque : p.unidades;
+        if (lote <= 0) return false;
+        const capital = p.custoUn * lote;
+        const breakevenUnits = Math.ceil(capital / p.lucroLiquidoConsumidor);
+        return (p.estoque ?? 0) < breakevenUnits;
+      })
+      .map((p) => {
+        const lote = p.estoque > 0 ? p.estoque : p.unidades;
+        const capital = p.custoUn * lote;
+        const breakevenUnits = Math.ceil(capital / p.lucroLiquidoConsumidor);
+        const faltam = breakevenUnits - (p.estoque ?? 0);
+        const pct = lote > 0
+          ? Math.min(100, Math.round(((p.estoque ?? 0) / breakevenUnits) * 100))
+          : 0;
+        return { p, breakevenUnits, faltam, pct };
+      })
+      .sort((a, b) => b.faltam - a.faltam);
   }, [products]);
 
   const chartData = products.map((p) => ({
@@ -50,27 +84,35 @@ export function Dashboard({ products, onSelect, onEdit }: Props) {
 
   return (
     <>
-      {/* KPI cards + botão PDF */}
-      <div className="flex items-center justify-between gap-2">
+      {/* KPI cards + botões */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h2 className="font-bold text-gray-700 text-lg">Visão Geral</h2>
-        <button
-          onClick={handleExport}
-          disabled={exporting || products.length === 0}
-          className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-gray-50 disabled:opacity-50 transition shadow-sm"
-        >
-          {exporting ? (
-            <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-            </svg>
-          ) : (
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-          )}
-          {exporting ? 'Gerando PDF…' : 'Exportar PDF'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowComparator(true)}
+            className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-gray-50 transition shadow-sm"
+          >
+            <span>⚖️</span> Comparar Impressoras
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={exporting || products.length === 0}
+            className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-gray-50 disabled:opacity-50 transition shadow-sm"
+          >
+            {exporting ? (
+              <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+              </svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+            )}
+            {exporting ? 'Gerando PDF…' : 'Exportar PDF'}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -85,6 +127,52 @@ export function Dashboard({ products, onSelect, onEdit }: Props) {
         />
       </div>
 
+      {/* ── Meta de Faturamento Mensal ─────────────────────────────────────── */}
+      {settings.metaFaturamento > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="font-bold text-gray-700">🎯 Meta de Faturamento — {mesAtual.slice(0, 7).replace('-', '/')}</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Faturamento registrado via vendas do mês</p>
+            </div>
+            <button
+              onClick={resetFaturamentoMes}
+              className="text-xs text-gray-400 hover:text-red-500 transition px-2 py-1 rounded-lg hover:bg-red-50"
+              title="Zerar faturamento do mês"
+            >
+              Zerar mês
+            </button>
+          </div>
+          {(() => {
+            const pctMeta = Math.min(100, Math.round((faturamentoMes / settings.metaFaturamento) * 100));
+            const faltaMeta = Math.max(0, settings.metaFaturamento - faturamentoMes);
+            const cor = pctMeta >= 100 ? 'bg-emerald-500' : pctMeta >= 60 ? 'bg-indigo-500' : pctMeta >= 30 ? 'bg-amber-400' : 'bg-red-400';
+            return (
+              <>
+                <div className="flex items-end justify-between mb-1.5">
+                  <span className="text-2xl font-bold text-gray-800">{R(faturamentoMes)}</span>
+                  <span className="text-sm font-semibold text-gray-400">de {R(settings.metaFaturamento)}</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                  <div
+                    className={`h-3 rounded-full transition-all duration-500 ${cor}`}
+                    style={{ width: `${pctMeta}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-1.5 text-xs">
+                  <span className={`font-bold ${pctMeta >= 100 ? 'text-emerald-600' : 'text-gray-500'}`}>
+                    {pctMeta}% {pctMeta >= 100 ? '🎉 Meta atingida!' : ''}
+                  </span>
+                  {pctMeta < 100 && (
+                    <span className="text-gray-400">Faltam {R(faltaMeta)}</span>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+        </div>
+      )}
+
       {/* Estoque — visão contábil */}
       {totals.totalItens > 0 && (
         <div className="bg-white rounded-2xl shadow-sm p-5">
@@ -95,7 +183,6 @@ export function Dashboard({ products, onSelect, onEdit }: Props) {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            {/* Capital Imobilizado — valor patrimonial ao custo */}
             <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4">
               <p className="text-xs font-bold text-purple-500 uppercase tracking-widest mb-1">💰 Capital Imobilizado</p>
               <p className="text-2xl font-bold text-purple-700">{R(totals.capitalImobilizado)}</p>
@@ -103,20 +190,64 @@ export function Dashboard({ products, onSelect, onEdit }: Props) {
                 Custo de produção parado — dinheiro que saiu do bolso e ainda não voltou
               </p>
             </div>
-            {/* Potencial de Venda — valor de mercado */}
             <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
               <p className="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-1">🏷️ Potencial de Venda</p>
               <p className="text-2xl font-bold text-emerald-700">{R(totals.potencialVenda)}</p>
               <p className="text-xs text-emerald-400 mt-1">
                 Faturamento bruto estimado se todo o estoque for vendido
               </p>
-              {/* Margem bruta implícita */}
               {totals.capitalImobilizado > 0 && (
                 <p className="text-xs font-semibold text-emerald-600 mt-2">
                   ↑ {((totals.potencialVenda / totals.capitalImobilizado - 1) * 100).toFixed(0)}% acima do custo
                 </p>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Alertas de Break-even ──────────────────────────────────────────── */}
+      {alertasBreakeeven.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-base">⚠️</span>
+            <div>
+              <h3 className="font-bold text-amber-700">Ponto de Equilíbrio não atingido</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {alertasBreakeeven.length} {alertasBreakeeven.length === 1 ? 'produto precisa' : 'produtos precisam'} de mais vendas para recuperar o capital investido
+              </p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {alertasBreakeeven.map(({ p, breakevenUnits, faltam, pct }) => (
+              <div key={p.id} className="bg-amber-50 border border-amber-100 rounded-xl p-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <button
+                    onClick={() => onSelect(p)}
+                    className="font-semibold text-gray-800 text-sm hover:text-indigo-600 transition text-left"
+                  >
+                    {p.nome}
+                  </button>
+                  <div className="text-right text-xs shrink-0 ml-2">
+                    <span className="font-bold text-amber-700">{p.estoque ?? 0}</span>
+                    <span className="text-amber-500"> / {breakevenUnits} un.</span>
+                  </div>
+                </div>
+                {/* Barra de progresso */}
+                <div className="w-full bg-amber-100 rounded-full h-2 overflow-hidden mb-1.5">
+                  <div
+                    className="h-2 rounded-full bg-amber-400 transition-all"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs text-amber-600">
+                  <span>{pct}% do break-even</span>
+                  <span className="font-semibold">
+                    Faltam <strong>{faltam}</strong> venda{faltam !== 1 ? 's' : ''} · {R(faltam * p.lucroLiquidoConsumidor)} de lucro
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -188,6 +319,11 @@ export function Dashboard({ products, onSelect, onEdit }: Props) {
           </div>
         ))}
       </div>
+
+      {/* Comparador de Impressoras */}
+      {showComparator && (
+        <PrinterComparatorModal onClose={() => setShowComparator(false)} />
+      )}
     </>
   );
 }

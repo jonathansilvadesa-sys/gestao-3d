@@ -19,6 +19,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   freteMode:         'none',
   freteValor:        0,
   impressoraAtualId: '',
+  metaFaturamento:      0,
+  faturamentoMesAtual:  0,
+  faturamentoMesRef:    '',
 };
 
 const SETTINGS_KEY          = 'gestao3d_settings';
@@ -127,6 +130,34 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  // ─── Faturamento mensal ───────────────────────────────────────────────────
+  const registrarVenda = useCallback((valor: number) => {
+    setSettings((prev) => {
+      const mesAtual = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+      const mesRef   = prev.faturamentoMesRef || mesAtual;
+      const acum     = mesRef === mesAtual ? prev.faturamentoMesAtual : 0;
+      const next = {
+        ...prev,
+        faturamentoMesAtual: +(acum + valor).toFixed(2),
+        faturamentoMesRef:   mesAtual,
+      };
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const resetFaturamentoMes = useCallback(() => {
+    setSettings((prev) => {
+      const next = {
+        ...prev,
+        faturamentoMesAtual: 0,
+        faturamentoMesRef:   new Date().toISOString().slice(0, 7),
+      };
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   return (
     <SettingsContext.Provider
       value={{
@@ -139,6 +170,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         printerOverrides,
         updatePrinterOverride,
         resetPrinterOverride,
+        registrarVenda,
+        resetFaturamentoMes,
       }}
     >
       {children}
