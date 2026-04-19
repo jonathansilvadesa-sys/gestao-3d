@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useMaterials } from '@/contexts/MaterialContext';
 import { useAcessorios } from '@/contexts/AcessorioContext';
+import { useHardware }   from '@/contexts/HardwareContext';
 import { NovoMaterialModal } from './NovoMaterialModal';
 import { AcessoriosTab } from './AcessoriosTab';
+import { HardwareTab }   from './HardwareTab';
 import { R } from '@/utils/formatters';
 import { custoPorGrama } from '@/types';
 import type { Material } from '@/types';
@@ -16,16 +18,18 @@ const TIPO_CORES: Record<string, string> = {
   Outro: 'bg-gray-100 text-gray-600',
 };
 
-type SubTab = 'filamentos' | 'acessorios';
+type SubTab = 'filamentos' | 'acessorios' | 'hardware';
 
 export function MateriaisTab() {
   const { materials, removeMaterial, updateMaterial } = useMaterials();
-  const { getAbaixoMinimo } = useAcessorios();
+  const { getAbaixoMinimo }       = useAcessorios();
+  const { getAlertasEstoque, getAlertasHoras } = useHardware();
   const [subTab, setSubTab] = useState<SubTab>('filamentos');
   const [showNovo, setShowNovo] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  const alertasAcess = getAbaixoMinimo().length;
+  const alertasAcess     = getAbaixoMinimo().length;
+  const alertasHardware  = getAlertasEstoque().length + getAlertasHoras().length;
 
   return (
     <div className="space-y-4">
@@ -52,6 +56,19 @@ export function MateriaisTab() {
           {alertasAcess > 0 && subTab !== 'acessorios' && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
               {alertasAcess > 9 ? '9+' : alertasAcess}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setSubTab('hardware')}
+          className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 relative ${
+            subTab === 'hardware' ? 'bg-orange-500 text-white' : 'text-gray-500 hover:bg-gray-100'
+          }`}
+        >
+          🔧 Hardware
+          {alertasHardware > 0 && subTab !== 'hardware' && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+              {alertasHardware > 9 ? '9+' : alertasHardware}
             </span>
           )}
         </button>
@@ -117,6 +134,9 @@ export function MateriaisTab() {
 
       {/* ── ACESSÓRIOS ─────────────────────────────────────────────────────────── */}
       {subTab === 'acessorios' && <AcessoriosTab />}
+
+      {/* ── HARDWARE ───────────────────────────────────────────────────────────── */}
+      {subTab === 'hardware' && <HardwareTab />}
     </div>
   );
 }

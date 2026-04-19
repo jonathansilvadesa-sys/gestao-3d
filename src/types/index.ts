@@ -133,6 +133,53 @@ export interface AcessorioContextType {
   getAbaixoMinimo: () => { acessorio: AcessorioEstoque; variante: AcessorioVariante }[];
 }
 
+// ─── Movimentação de estoque de peça ─────────────────────────────────────────
+export type EstoqueTipoMovimento = 'producao' | 'venda' | 'ajuste' | 'falha';
+
+export interface EstoqueMovimento {
+  id: string;
+  tipo: EstoqueTipoMovimento;
+  quantidade: number;   // sempre positivo
+  data: string;         // ISO timestamp
+  motivo?: string;
+}
+
+// ─── Hardware / Peças de Reposição ────────────────────────────────────────────
+export type HardwareCategoria = 'bico' | 'hotend' | 'correia' | 'sensor' | 'lubrificante' | 'outro';
+
+export const HARDWARE_CAT_INFO: Record<HardwareCategoria, { label: string; emoji: string; cor: string }> = {
+  bico:         { label: 'Bico',         emoji: '🔧', cor: 'bg-blue-100 text-blue-700' },
+  hotend:       { label: 'Hotend',       emoji: '🔥', cor: 'bg-red-100 text-red-700' },
+  correia:      { label: 'Correia',      emoji: '⚙️', cor: 'bg-amber-100 text-amber-700' },
+  sensor:       { label: 'Sensor',       emoji: '📡', cor: 'bg-purple-100 text-purple-700' },
+  lubrificante: { label: 'Lubrificante', emoji: '🛢️', cor: 'bg-emerald-100 text-emerald-700' },
+  outro:        { label: 'Outro',        emoji: '📦', cor: 'bg-gray-100 text-gray-600' },
+};
+
+export interface HardwarePeca {
+  id: string;
+  nome: string;              // "Bico 0.4mm", "Hotend Bambu A1"
+  categoria: HardwareCategoria;
+  impressoraId?: string;     // id do PrinterProfile (opcional)
+  impressoraNome?: string;   // nome livre / compatibilidade
+  estoqueAtual: number;
+  estoqueMinimo: number;
+  horasVidaUtil: number;     // horas estimadas de durabilidade
+  horasUsadas: number;       // horas já acumuladas em uso
+  custoUn: number;           // R$ por unidade
+  notas?: string;
+}
+
+export interface HardwareContextType {
+  pecas: HardwarePeca[];
+  addPeca:        (p: Omit<HardwarePeca, 'id'>) => void;
+  updatePeca:     (id: string, updates: Partial<HardwarePeca>) => void;
+  removePeca:     (id: string) => void;
+  adicionarHoras: (id: string, horas: number) => void;
+  getAlertasEstoque: () => HardwarePeca[];   // estoqueAtual <= estoqueMinimo
+  getAlertasHoras:   () => HardwarePeca[];   // horasUsadas >= horasVidaUtil * 0.9
+}
+
 // ─── Peça (produto 3D) ────────────────────────────────────────────────────────
 export interface Product {
   id: number;
@@ -168,6 +215,11 @@ export interface Product {
   impressoraId?: string;   // id do PrinterProfile usado
   // Histórico de preços
   historicoPrecos?: PrecoHistorico[];
+  // Estoque e vendas
+  totalVendido?: number;
+  unidadesProduzidas?: number;  // total acumulado de produções
+  unidadesPerdidas?: number;    // total acumulado de falhas
+  movimentosEstoque?: EstoqueMovimento[];
   // impressora usada nesta peça (override dos globais)
   amortizacaoValor?: number;  // R$ da impressora usada (armazenado para recalcular)
   amortizacaoHoras?: number;  // vida útil em horas da impressora usada

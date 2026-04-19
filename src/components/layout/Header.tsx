@@ -3,6 +3,7 @@ import { useAuth }      from '@/contexts/AuthContext';
 import { useAcessorios } from '@/contexts/AcessorioContext';
 import { useMaterials }  from '@/contexts/MaterialContext';
 import { useTheme }      from '@/contexts/ThemeContext';
+import { useHardware }   from '@/contexts/HardwareContext';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import type { AppTab } from '@/types';
 
@@ -26,6 +27,7 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, breakEvenCount =
   const { getAbaixoMinimo }    = useAcessorios();
   const { materials }          = useMaterials();
   const { theme, toggleTheme } = useTheme();
+  const { getAlertasEstoque: hwEstoque, getAlertasHoras: hwHoras } = useHardware();
 
   const [showSettings, setShowSettings] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -56,7 +58,16 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, breakEvenCount =
     }),
   [materials]);
 
-  const totalAlertas = acessorioAlertas.length + filamentoAlertas.length + (breakEvenCount > 0 ? 1 : 0);
+  // ── Alertas de hardware ───────────────────────────────────────────────────
+  const hwEstoqueAlertas = useMemo(() => hwEstoque(), [hwEstoque]);
+  const hwHorasAlertas   = useMemo(() => hwHoras(),   [hwHoras]);
+
+  const totalAlertas =
+    acessorioAlertas.length +
+    filamentoAlertas.length +
+    hwEstoqueAlertas.length +
+    hwHorasAlertas.length +
+    (breakEvenCount > 0 ? 1 : 0);
 
   return (
     <>
@@ -234,6 +245,62 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, breakEvenCount =
                                       />
                                     </div>
                                     <p className="text-[10px] text-purple-500 mt-1">{pct}% restante</p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── Hardware — Estoque Baixo ── */}
+                        {hwEstoqueAlertas.length > 0 && (
+                          <div className={`px-4 py-3 ${(acessorioAlertas.length > 0 || filamentoAlertas.length > 0) ? 'border-t border-gray-100 dark:border-gray-700' : ''}`}>
+                            <p className="text-xs font-bold text-orange-600 uppercase tracking-widest mb-2">
+                              🔧 Hardware — Estoque Baixo
+                            </p>
+                            <div className="space-y-2">
+                              {hwEstoqueAlertas.map((p) => (
+                                <div key={p.id} className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-2.5">
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">{p.nome}</p>
+                                    <p className="text-xs font-bold text-orange-600">
+                                      {p.estoqueAtual} / {p.estoqueMinimo} un.
+                                    </p>
+                                  </div>
+                                  {p.impressoraNome && (
+                                    <p className="text-[10px] text-gray-400 mt-0.5">{p.impressoraNome}</p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── Hardware — Limite de Horas ── */}
+                        {hwHorasAlertas.length > 0 && (
+                          <div className={`px-4 py-3 ${(acessorioAlertas.length > 0 || filamentoAlertas.length > 0 || hwEstoqueAlertas.length > 0) ? 'border-t border-gray-100 dark:border-gray-700' : ''}`}>
+                            <p className="text-xs font-bold text-red-600 uppercase tracking-widest mb-2">
+                              ⚠️ Hardware — Limite de Horas
+                            </p>
+                            <div className="space-y-2">
+                              {hwHorasAlertas.map((p) => {
+                                const pct = Math.min(100, Math.round((p.horasUsadas / p.horasVidaUtil) * 100));
+                                const substituir = p.horasUsadas >= p.horasVidaUtil;
+                                return (
+                                  <div key={p.id} className="bg-red-50 dark:bg-red-900/20 rounded-xl p-2.5">
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">{p.nome}</p>
+                                      <p className={`text-xs font-bold ${substituir ? 'text-red-600' : 'text-amber-600'}`}>
+                                        {p.horasUsadas}h / {p.horasVidaUtil}h
+                                      </p>
+                                    </div>
+                                    <div className="mt-1.5 w-full bg-red-100 dark:bg-red-900/40 rounded-full h-1.5 overflow-hidden">
+                                      <div className={`h-1.5 rounded-full ${substituir ? 'bg-red-500' : 'bg-amber-400'}`}
+                                        style={{ width: `${pct}%` }} />
+                                    </div>
+                                    <p className={`text-[10px] mt-1 font-semibold ${substituir ? 'text-red-600' : 'text-amber-600'}`}>
+                                      {substituir ? '🔴 SUBSTITUIR AGORA' : `🟡 ${pct}% — próximo da troca`}
+                                    </p>
                                   </div>
                                 );
                               })}
