@@ -964,10 +964,10 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
           </div>
 
           {/* Preview */}
-          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-4">
-            <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-3">Preview do Cálculo</p>
+          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-gray-700 dark:to-gray-800 rounded-2xl p-4">
+            <p className="text-xs font-bold text-indigo-400 dark:text-indigo-300 uppercase tracking-widest mb-3">Preview do Cálculo</p>
             {isFullBatch && (
-              <div className="flex items-center gap-1.5 text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded-lg px-2 py-1.5 mb-3">
+              <div className="flex items-center gap-1.5 text-xs text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-700 rounded-lg px-2 py-1.5 mb-3">
                 <span>🗂️</span>
                 <span>Modo lote: peso e tempo ÷ <strong>{f.unidades || 1}</strong> unidades no custo unitário</span>
               </div>
@@ -984,8 +984,8 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
                 ['Break-even mínimo',     `${calc.breakEvenMarkup}x markup`],
               ] as [string, string][]).map(([k, v]) => (
                 <div key={k} className="flex justify-between">
-                  <span className="text-gray-500">{k}</span>
-                  <span className="font-bold text-gray-800">{v}</span>
+                  <span className="text-gray-500 dark:text-gray-300">{k}</span>
+                  <span className="font-bold text-gray-800 dark:text-white">{v}</span>
                 </div>
               ))}
             </div>
