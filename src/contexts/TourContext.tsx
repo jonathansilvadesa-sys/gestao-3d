@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { Joyride, STATUS } from 'react-joyride';
 import type { Step, EventData } from 'react-joyride';
 import type { AppTab } from '@/types';
@@ -232,7 +232,19 @@ const TourContext = createContext<TourContextType | null>(null);
 export function TourProvider({ children }: { children: React.ReactNode }) {
   const [run, setRun] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
-  const tourCompleted = localStorage.getItem(TOUR_KEY) === 'true';
+
+  // Lê o localStorage apenas via inicializador de useState (seguro no cliente)
+  const [tourCompleted, setTourCompleted] = useState<boolean>(
+    () => localStorage.getItem(TOUR_KEY) === 'true'
+  );
+
+  // Garante que o Joyride só é inserido no DOM após a montagem completa.
+  // Isso evita que o Joyride tente localizar elementos data-tour antes da
+  // página estabilizar (causa do congelamento no Vercel com localStorage vazio).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Referência para a função de navegação de aba (injetada pelo App)
   const navigateRef = useRef<((tab: AppTab) => void) | null>(null);
@@ -246,20 +258,24 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     setRun(true);
   }, []);
 
+  const finishTour = useCallback(() => {
+    localStorage.setItem(TOUR_KEY, 'true');
+    setTourCompleted(true);
+    setRun(false);
+  }, []);
+
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   const handleEvent = useCallback(async (data: EventData) => {
     const { status, action, type, index } = data;
 
     if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
-      localStorage.setItem(TOUR_KEY, 'true');
-      setRun(false);
+      finishTour();
       return;
     }
 
     if (type === 'step:after') {
       if (action === 'close' || action === 'skip') {
-        localStorage.setItem(TOUR_KEY, 'true');
-        setRun(false);
+        finishTour();
         return;
       }
 
@@ -279,21 +295,24 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 
       setStepIndex(nextIndex);
     }
-  }, []);
+  }, [finishTour]);
 
   return (
     <TourContext.Provider value={{ startTour, tourCompleted, registerNavigate }}>
-      <Joyride
-        steps={TOUR_STEPS}
-        run={run}
-        stepIndex={stepIndex}
-        continuous
-        scrollToFirstStep
-        options={JOYRIDE_OPTIONS}
-        styles={JOYRIDE_STYLES}
-        locale={LOCALE}
-        onEvent={handleEvent}
-      />
+      {/* Joyride só monta após o primeiro render completo (evita congelamento) */}
+      {mounted && (
+        <Joyride
+          steps={TOUR_STEPS}
+          run={run}
+          stepIndex={stepIndex}
+          continuous
+          scrollToFirstStep
+          options={JOYRIDE_OPTIONS}
+          styles={JOYRIDE_STYLES}
+          locale={LOCALE}
+          onEvent={handleEvent}
+        />
+      )}
       {children}
     </TourContext.Provider>
   );
