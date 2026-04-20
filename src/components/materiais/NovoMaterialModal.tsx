@@ -108,7 +108,7 @@ export function NovoMaterialModal({ onClose }: Props) {
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Preço Pago (R$)</label>
               <input
-                type="number" step="0.01" value={f.precoPago} onChange={s('precoPago')}
+                type="number" inputMode="decimal" step="0.01" value={f.precoPago} onChange={s('precoPago')}
                 placeholder="99.90"
                 className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
               />
@@ -118,7 +118,7 @@ export function NovoMaterialModal({ onClose }: Props) {
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Peso Total (g)</label>
               <input
-                type="number" step="1" value={f.pesoTotal} onChange={s('pesoTotal')}
+                type="number" inputMode="decimal" step="1" value={f.pesoTotal} onChange={s('pesoTotal')}
                 className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
               />
             </div>
@@ -127,7 +127,7 @@ export function NovoMaterialModal({ onClose }: Props) {
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Peso Atual (g)</label>
               <input
-                type="number" step="1" value={f.pesoAtual} onChange={s('pesoAtual')}
+                type="number" inputMode="decimal" step="1" value={f.pesoAtual} onChange={s('pesoAtual')}
                 className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
               />
             </div>

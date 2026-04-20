@@ -72,7 +72,7 @@ export function PrinterComparatorModal({ onClose }: Props) {
                 <label className="text-xs font-semibold text-indigo-700">Tempo de Impressão (h)</label>
                 <div className="mt-1 flex items-center gap-1">
                   <input
-                    type="number" min="0.1" step="0.5"
+                    type="number" inputMode="decimal" min="0.1" step="0.5"
                     value={tempo}
                     onChange={(e) => setTempo(e.target.value)}
                     className="flex-1 border border-indigo-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
@@ -84,7 +84,7 @@ export function PrinterComparatorModal({ onClose }: Props) {
                 <label className="text-xs font-semibold text-indigo-700">Custo do kWh (R$)</label>
                 <div className="mt-1 flex items-center gap-1">
                   <input
-                    type="number" min="0" step="0.01"
+                    type="number" inputMode="decimal" min="0" step="0.01"
                     value={custoKwh}
                     onChange={(e) => setCustoKwh(e.target.value)}
                     className="flex-1 border border-indigo-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"

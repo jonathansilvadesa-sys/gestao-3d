@@ -88,9 +88,15 @@ export function ProductsTab({ products, onSelect, onEdit, onRemove }: Props) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
-              {['Peça', 'Tempo', 'Peso', 'Custo Un', 'Markup', 'Preço Final', 'Preço Lojista', 'Lucro Líq.', 'Ações'].map((h) => (
-                <th key={h} className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-widest">{h}</th>
-              ))}
+              <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-widest">Peça</th>
+              <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-widest hidden sm:table-cell">Tempo</th>
+              <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-widest hidden sm:table-cell">Peso</th>
+              <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-widest hidden sm:table-cell">Custo Un</th>
+              <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-widest">Markup</th>
+              <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-widest">Preço Final</th>
+              <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-widest hidden md:table-cell">Preço Lojista</th>
+              <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-widest">Lucro Líq.</th>
+              <th className="text-left px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-widest">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -114,15 +120,17 @@ export function ProductsTab({ products, onSelect, onEdit, onRemove }: Props) {
                           </span>
                         ) : null;
                       })()}
+                      {/* Mobile-only: custo + tempo/peso inline */}
+                      <span className="text-[10px] text-gray-400 sm:hidden mt-0.5">{p.tempo}h · {p.peso}g · {R(p.custoUn)}</span>
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-gray-600">{p.tempo}h</td>
-                <td className="px-4 py-3 text-gray-600">{p.peso}g</td>
-                <td className="px-4 py-3 font-medium text-gray-800">{R(p.custoUn)}</td>
+                <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{p.tempo}h</td>
+                <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{p.peso}g</td>
+                <td className="px-4 py-3 font-medium text-gray-800 hidden sm:table-cell">{R(p.custoUn)}</td>
                 <td className="px-4 py-3"><Badge v={`${p.markup}x`} bg={COLORS[i % COLORS.length]} /></td>
                 <td className="px-4 py-3 font-bold text-indigo-700">{R(p.precoConsumidor)}</td>
-                <td className="px-4 py-3 text-purple-600">{R(p.precoLojista)}</td>
+                <td className="px-4 py-3 text-purple-600 hidden md:table-cell">{R(p.precoLojista)}</td>
                 <td className="px-4 py-3 font-bold text-emerald-600">{R(p.lucroLiquidoConsumidor)}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">

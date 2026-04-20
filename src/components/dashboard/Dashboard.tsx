@@ -119,7 +119,7 @@ export function Dashboard({ products, onSelect, onEdit }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total de peças"           value={totals.totalPecas}       color="indigo" />
         <StatCard label="Lucro total (consumidor)"  value={R(totals.totalLucroC)}   color="emerald" />
         <StatCard label="Lucro total (lojista)"     value={R(totals.totalLucroL)}   color="purple" />

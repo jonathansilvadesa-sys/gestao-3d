@@ -377,7 +377,7 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
     <div>
       <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</label>
       <input
-        type="number" step={step} value={f[k] as string} onChange={set(k)}
+        type="number" inputMode="decimal" step={step} value={f[k] as string} onChange={set(k)}
         className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
       />
     </div>
@@ -583,7 +583,7 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
                     <div>
                       <label className="text-xs text-indigo-500 font-semibold">Peso (g)</label>
                       <input
-                        type="number" min="0" step="0.1" value={fl.peso}
+                        type="number" inputMode="decimal" min="0" step="0.1" value={fl.peso}
                         onChange={(e) => updateFilamento(fl.id, 'peso', e.target.value)}
                         className="mt-1 w-full bg-white border border-indigo-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                       />
@@ -593,7 +593,7 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
                         R$/kg {fl.materialId ? '(do material)' : '(manual)'}
                       </label>
                       <input
-                        type="number" min="0" step="0.01" value={fl.custoKg}
+                        type="number" inputMode="decimal" min="0" step="0.01" value={fl.custoKg}
                         onChange={(e) => updateFilamento(fl.id, 'custoKg', e.target.value)}
                         readOnly={!!fl.materialId}
                         className={`mt-1 w-full border border-indigo-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
@@ -652,7 +652,7 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
               <span className="text-xs text-gray-500 flex-1">Taxa da plataforma (editável)</span>
               <div className="flex items-center gap-1">
                 <input
-                  type="number" min="0" max="100" step="0.5"
+                  type="number" inputMode="decimal" min="0" max="100" step="0.5"
                   value={f.custoAnuncio}
                   onChange={set('custoAnuncio')}
                   className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:ring-2 focus:ring-indigo-400"
@@ -732,7 +732,7 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
                 <label className="text-xs font-semibold text-amber-700">Horas de acabamento</label>
                 <div className="mt-1 flex items-center gap-1">
                   <input
-                    type="number" min="0" step="0.25"
+                    type="number" inputMode="decimal" min="0" step="0.25"
                     value={f.maoObraHoras}
                     onChange={set('maoObraHoras')}
                     className="flex-1 border border-amber-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
@@ -744,7 +744,7 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
                 <label className="text-xs font-semibold text-amber-700">Valor da hora (R$)</label>
                 <div className="mt-1 flex items-center gap-1">
                   <input
-                    type="number" min="0" step="1"
+                    type="number" inputMode="decimal" min="0" step="1"
                     value={f.maoObraTaxa}
                     onChange={set('maoObraTaxa')}
                     className="flex-1 border border-amber-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
@@ -788,7 +788,7 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
                   <label className="text-xs font-semibold text-indigo-700">Margem desejada (%)</label>
                   <div className="mt-1 flex items-center gap-1">
                     <input
-                      type="number" min="1" max="95" step="1"
+                      type="number" inputMode="decimal" min="1" max="95" step="1"
                       value={margemAlvo}
                       onChange={(e) => setMargemAlvo(e.target.value)}
                       className="flex-1 border border-indigo-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
@@ -899,14 +899,14 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
                   </div>
                   <div>
                     {idx === 0 && <p className="text-xs text-gray-400 mb-0.5">Qtd</p>}
-                    <input type="number" min="1" step="1" value={a.qtd}
+                    <input type="number" inputMode="decimal" min="1" step="1" value={a.qtd}
                       onChange={(e) => updateAcessorio(a.id, 'qtd', e.target.value)}
                       className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 text-center"
                     />
                   </div>
                   <div>
                     {idx === 0 && <p className="text-xs text-gray-400 mb-0.5">Custo un. (R$)</p>}
-                    <input type="number" min="0" step="0.01" value={a.custo}
+                    <input type="number" inputMode="decimal" min="0" step="0.01" value={a.custo}
                       onChange={(e) => updateAcessorio(a.id, 'custo', e.target.value)}
                       className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 text-right"
                     />
@@ -946,7 +946,7 @@ export function EditProductModal({ product: p, onClose, onSave }: Props) {
               </div>
               {freteMode !== 'none' && (
                 <div className="flex items-center gap-2">
-                  <input type="number" min="0" step="0.01" value={freteValor}
+                  <input type="number" inputMode="decimal" min="0" step="0.01" value={freteValor}
                     onChange={(e) => setFreteValor(e.target.value)}
                     className="flex-1 bg-white border border-sky-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
                   <span className="text-sm text-sky-600 font-medium w-10">

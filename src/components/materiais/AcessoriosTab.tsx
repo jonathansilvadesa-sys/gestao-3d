@@ -131,7 +131,7 @@ function VarianteRow({ acessorioId, variante: v }: VarianteRowProps) {
                 {movTipo === 'ajuste' ? 'Novo estoque' : 'Quantidade'}
               </label>
               <input
-                type="number" min="0" value={movQtd}
+                type="number" inputMode="decimal" min="0" value={movQtd}
                 onChange={(e) => setMovQtd(e.target.value)}
                 placeholder="0"
                 className="mt-0.5 w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
@@ -382,13 +382,13 @@ function EditAcessorioModal({ inicial, onClose, onSave }: EditAcessorioModalProp
                   <input value={v.tamanho} onChange={(e) => updateVariante(i, 'tamanho', e.target.value)}
                     placeholder={variantes.length === 1 ? 'Único' : '3mm, M3×8…'}
                     className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-                  <input type="number" min="0" value={v.estoqueAtual}
+                  <input type="number" inputMode="decimal" min="0" value={v.estoqueAtual}
                     onChange={(e) => updateVariante(i, 'estoqueAtual', e.target.value)}
                     className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-                  <input type="number" min="0" value={v.estoqueMinimo}
+                  <input type="number" inputMode="decimal" min="0" value={v.estoqueMinimo}
                     onChange={(e) => updateVariante(i, 'estoqueMinimo', e.target.value)}
                     className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-                  <input type="number" min="0" step="0.01" value={v.custoUn}
+                  <input type="number" inputMode="decimal" min="0" step="0.01" value={v.custoUn}
                     onChange={(e) => updateVariante(i, 'custoUn', e.target.value)}
                     className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                   <button onClick={() => removeVariante(i)}

@@ -186,7 +186,7 @@ export function HardwareTab() {
             <div>
               <label className="text-xs font-semibold text-gray-500">Estoque atual</label>
               <input
-                type="number" min={0}
+                type="number" inputMode="decimal" min={0}
                 value={form.estoqueAtual}
                 onChange={(e) => f('estoqueAtual', +e.target.value || 0)}
                 className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
@@ -197,7 +197,7 @@ export function HardwareTab() {
             <div>
               <label className="text-xs font-semibold text-gray-500">Estoque mínimo (alerta)</label>
               <input
-                type="number" min={0}
+                type="number" inputMode="decimal" min={0}
                 value={form.estoqueMinimo}
                 onChange={(e) => f('estoqueMinimo', +e.target.value || 0)}
                 className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
@@ -208,7 +208,7 @@ export function HardwareTab() {
             <div>
               <label className="text-xs font-semibold text-gray-500">Vida útil estimada (horas)</label>
               <input
-                type="number" min={1}
+                type="number" inputMode="decimal" min={1}
                 value={form.horasVidaUtil}
                 onChange={(e) => f('horasVidaUtil', +e.target.value || 1)}
                 className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
@@ -219,7 +219,7 @@ export function HardwareTab() {
             <div>
               <label className="text-xs font-semibold text-gray-500">Horas já usadas (atual)</label>
               <input
-                type="number" min={0}
+                type="number" inputMode="decimal" min={0}
                 value={form.horasUsadas}
                 onChange={(e) => f('horasUsadas', +e.target.value || 0)}
                 className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
@@ -230,7 +230,7 @@ export function HardwareTab() {
             <div>
               <label className="text-xs font-semibold text-gray-500">Custo unitário (R$)</label>
               <input
-                type="number" min={0} step="0.01"
+                type="number" inputMode="decimal" min={0} step="0.01"
                 value={form.custoUn}
                 onChange={(e) => f('custoUn', +e.target.value || 0)}
                 className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
@@ -454,7 +454,7 @@ export function HardwareTab() {
                   {/* Horas usadas */}
                   <div className="flex items-center gap-1 flex-1">
                     <input
-                      type="number" min={0} step={0.5}
+                      type="number" inputMode="decimal" min={0} step={0.5}
                       placeholder="+ horas"
                       value={horasInput[p.id] ?? ''}
                       onChange={(e) => setHorasInput((prev) => ({ ...prev, [p.id]: e.target.value }))}

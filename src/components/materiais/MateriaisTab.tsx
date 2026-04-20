@@ -235,7 +235,7 @@ function MaterialCard({ material: m, editing, onEdit, onCancelEdit, onUpdate, on
         <div className="bg-amber-50 rounded-xl p-3 flex items-center gap-3">
           <div className="flex-1">
             <label className="text-xs font-semibold text-amber-700">Peso atual (g)</label>
-            <input type="number" value={pesoAtual} min={0} max={m.pesoTotal}
+            <input type="number" inputMode="decimal" value={pesoAtual} min={0} max={m.pesoTotal}
               onChange={(e) => setPesoAtual(e.target.value)}
               className="mt-1 w-full border border-amber-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
           </div>

@@ -315,7 +315,7 @@ export function EstoqueTab({ products, onProduzir, onVender, onAjustar, onFalha 
                         className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-600 font-bold text-base flex items-center justify-center hover:bg-gray-50 transition"
                       >−</button>
                       <input
-                        type="number"
+                        type="number" inputMode="decimal"
                         min={0}
                         max={acaoAtiva === 'venda' ? estoque : undefined}
                         value={e.input}

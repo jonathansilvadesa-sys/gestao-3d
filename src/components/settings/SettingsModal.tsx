@@ -112,7 +112,7 @@ export function SettingsModal({ onClose }: Props) {
       <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">{label}</label>
       <div className="mt-1 flex items-center gap-2">
         <input
-          type="number" step="0.01" value={form[k] as number} onChange={set(k)}
+          type="number" inputMode="decimal" step="0.01" value={form[k] as number} onChange={set(k)}
           className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
         />
         {unit && <span className="text-xs text-gray-400 font-medium w-10">{unit}</span>}
@@ -311,21 +311,21 @@ export function SettingsModal({ onClose }: Props) {
                       className="col-span-2 border border-amber-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" />
                   )}
                   <div className="relative">
-                    <input type="number" value={editingPrinter.potenciaW}
+                    <input type="number" inputMode="decimal" value={editingPrinter.potenciaW}
                       onChange={(e) => setEditingPrinter((p) => p && ({ ...p, potenciaW: e.target.value }))}
                       placeholder="Potência"
                       className="w-full border border-amber-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" />
                     <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-amber-400">W</span>
                   </div>
                   <div className="relative">
-                    <input type="number" value={editingPrinter.valorMaquina}
+                    <input type="number" inputMode="decimal" value={editingPrinter.valorMaquina}
                       onChange={(e) => setEditingPrinter((p) => p && ({ ...p, valorMaquina: e.target.value }))}
                       placeholder="Valor"
                       className="w-full border border-amber-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" />
                     <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-amber-400">R$</span>
                   </div>
                   <div className="relative col-span-2">
-                    <input type="number" value={editingPrinter.vidaUtilHoras}
+                    <input type="number" inputMode="decimal" value={editingPrinter.vidaUtilHoras}
                       onChange={(e) => setEditingPrinter((p) => p && ({ ...p, vidaUtilHoras: e.target.value }))}
                       placeholder="Vida útil"
                       className="w-full border border-amber-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" />
@@ -372,19 +372,19 @@ export function SettingsModal({ onClose }: Props) {
                     placeholder="Marca (ex: Creality)"
                     className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                   <div className="relative">
-                    <input type="number" value={novaPrint.potenciaW} onChange={(e) => setNovaPrint((p) => ({ ...p, potenciaW: e.target.value }))}
+                    <input type="number" inputMode="decimal" value={novaPrint.potenciaW} onChange={(e) => setNovaPrint((p) => ({ ...p, potenciaW: e.target.value }))}
                       placeholder="Potência (W)"
                       className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                     <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">W</span>
                   </div>
                   <div className="relative">
-                    <input type="number" value={novaPrint.valorMaquina} onChange={(e) => setNovaPrint((p) => ({ ...p, valorMaquina: e.target.value }))}
+                    <input type="number" inputMode="decimal" value={novaPrint.valorMaquina} onChange={(e) => setNovaPrint((p) => ({ ...p, valorMaquina: e.target.value }))}
                       placeholder="Valor (R$)"
                       className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                     <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">R$</span>
                   </div>
                   <div className="relative">
-                    <input type="number" value={novaPrint.vidaUtilHoras} onChange={(e) => setNovaPrint((p) => ({ ...p, vidaUtilHoras: e.target.value }))}
+                    <input type="number" inputMode="decimal" value={novaPrint.vidaUtilHoras} onChange={(e) => setNovaPrint((p) => ({ ...p, vidaUtilHoras: e.target.value }))}
                       placeholder="Vida útil (h)"
                       className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                     <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">h</span>
@@ -444,7 +444,7 @@ export function SettingsModal({ onClose }: Props) {
             </div>
             {form.freteMode !== 'none' && (
               <div className="flex items-center gap-2">
-                <input type="number" min="0" step="0.01"
+                <input type="number" inputMode="decimal" min="0" step="0.01"
                   value={form.freteValor}
                   onChange={(e) => setForm((p) => ({ ...p, freteValor: parseFloat(e.target.value) || 0 }))}
                   className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
@@ -556,7 +556,7 @@ export function SettingsModal({ onClose }: Props) {
                     className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                     placeholder="Nome do canal" />
                   <div className="flex items-center gap-1">
-                    <input type="number" min="0" max="100" step="0.5" value={canal.taxaPercent}
+                    <input type="number" inputMode="decimal" min="0" max="100" step="0.5" value={canal.taxaPercent}
                       onChange={(e) => updateEdit(canal.id, 'taxaPercent', parseFloat(e.target.value) || 0)}
                       className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                     <span className="text-xs text-gray-400 shrink-0">%</span>
@@ -590,7 +590,7 @@ export function SettingsModal({ onClose }: Props) {
                     placeholder="Nome do canal"
                     className="w-full bg-white border border-emerald-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400" />
                   <div className="flex items-center gap-1">
-                    <input type="number" min="0" max="100" step="0.5" value={novoCanal.taxaPercent}
+                    <input type="number" inputMode="decimal" min="0" max="100" step="0.5" value={novoCanal.taxaPercent}
                       onChange={(e) => setNovoCanal((p) => ({ ...p, taxaPercent: parseFloat(e.target.value) || 0 }))}
                       className="w-full bg-white border border-emerald-200 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-emerald-400" />
                     <span className="text-xs text-gray-400 shrink-0">%</span>

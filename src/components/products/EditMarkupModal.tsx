@@ -55,7 +55,7 @@ export function EditMarkupModal({ product: p, onClose, onSave }: Props) {
                 className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 text-xl font-bold text-gray-600 flex items-center justify-center"
               >−</button>
               <input
-                type="number" step="0.5" min="1"
+                type="number" inputMode="decimal" step="0.5" min="1"
                 value={markup}
                 onChange={(e) => setMarkup(e.target.value)}
                 className="flex-1 text-center text-2xl font-bold border-2 border-amber-300 rounded-xl py-2 focus:outline-none focus:border-amber-500"
