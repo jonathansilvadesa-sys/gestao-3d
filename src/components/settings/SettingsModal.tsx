@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useCanais }   from '@/contexts/CanaisContext';
 import { PRINTER_PRESETS } from '@/types';
@@ -148,6 +148,50 @@ export function SettingsModal({ onClose }: Props) {
     });
     setNovaPrint({ nome: '', marca: '', potenciaW: '', valorMaquina: '', vidaUtilHoras: '' });
     setShowAddPrinter(false);
+  };
+
+  // ── Backup e Restauração ───────────────────────────────────────────────
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const exportSystemBackup = () => {
+    const backupData: Record<string, string | null> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('gestao3d_')) {
+        backupData[key] = localStorage.getItem(key);
+      }
+    }
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const date = new Date().toISOString().split('T')[0];
+    link.href = url;
+    link.download = `gestao3d_backup_${date}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importSystemBackup = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        if (Object.keys(data).some((key) => key.startsWith('gestao3d_'))) {
+          Object.entries(data).forEach(([key, value]) => {
+            if (value) localStorage.setItem(key, value as string);
+          });
+          alert('Backup restaurado com sucesso! O sistema irá recarregar.');
+          window.location.reload();
+        } else {
+          alert('Arquivo de backup inválido.');
+        }
+      } catch {
+        alert('Erro ao ler o arquivo de backup.');
+      }
+    };
+    reader.readAsText(file);
   };
 
   // Agrupamento por marca
@@ -568,6 +612,33 @@ export function SettingsModal({ onClose }: Props) {
             <p className="text-xs text-gray-400 text-center mt-2">
               {canaisEdit.length} canal{canaisEdit.length !== 1 ? 'is' : ''} cadastrado{canaisEdit.length !== 1 ? 's' : ''}
             </p>
+          </div>
+
+          {/* ── BACKUP E MIGRAÇÃO ─────────────────────────────────────────────── */}
+          <div className="border-t border-gray-100 pt-6">
+            <p className="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-1">💾 Backup e Migração</p>
+            <p className="text-xs text-gray-400 mb-4">
+              Exporte todos os seus dados (peças, materiais, estoque, configurações) como um arquivo JSON.
+              Use para migrar entre dispositivos ou fazer backup antes de alterações.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={exportSystemBackup}
+                className="flex-1 flex items-center justify-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 font-semibold text-sm py-2.5 rounded-xl hover:bg-indigo-100 transition">
+                ⬇️ Exportar Backup (.json)
+              </button>
+              <label className="flex-1 flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm py-2.5 rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                ⬆️ Importar Backup
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={importSystemBackup}
+                />
+              </label>
+            </div>
           </div>
 
           {/* Aviso */}
