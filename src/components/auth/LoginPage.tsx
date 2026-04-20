@@ -74,12 +74,6 @@ export function LoginPage() {
             </button>
           </form>
 
-          {/* Credenciais de demonstração */}
-          <div className="bg-indigo-50 rounded-2xl p-4 text-xs text-indigo-600 space-y-1">
-            <p className="font-bold uppercase tracking-widest mb-2">Credenciais de demonstração</p>
-            <p><span className="font-semibold">Admin:</span> jonathan@gestao3d.com · admin123</p>
-            <p><span className="font-semibold">Operador:</span> operador@gestao3d.com · op123</p>
-          </div>
         </div>
       </div>
     </div>
