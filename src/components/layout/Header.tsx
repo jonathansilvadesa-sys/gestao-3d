@@ -90,6 +90,7 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, breakEvenCount =
             {TABS.map(({ key, label, icon }) => (
               <button
                 key={key}
+                data-tour={`tab-${key}`}
                 onClick={() => setTab(key)}
                 className={`px-3 py-2 rounded-xl text-sm font-semibold transition relative flex items-center gap-1.5 ${
                   tab === key ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:bg-gray-100'

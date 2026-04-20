@@ -77,8 +77,8 @@ export function MateriaisTab() {
       {/* ── FILAMENTOS ─────────────────────────────────────────────────────────── */}
       {subTab === 'filamentos' && (
         <>
-          {/* Header */}
-          <div className="bg-white rounded-2xl shadow-sm p-5 flex items-center justify-between">
+          {/* Header — data-tour aqui garante que o alvo do tour existe mesmo sem materiais */}
+          <div data-tour="filamento-barra" className="bg-white rounded-2xl shadow-sm p-5 flex items-center justify-between">
             <div>
               <h2 className="font-bold text-gray-800 text-lg">Filamentos Cadastrados</h2>
               <p className="text-sm text-gray-400 mt-0.5">
@@ -98,15 +98,24 @@ export function MateriaisTab() {
 
           {/* Lista vazia */}
           {materials.length === 0 && (
-            <div className="bg-white rounded-2xl shadow-sm p-12 flex flex-col items-center gap-3 text-center">
-              <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-3xl">🧵</div>
-              <p className="font-bold text-gray-700">Nenhum filamento cadastrado</p>
-              <p className="text-sm text-gray-400 max-w-xs">
-                Cadastre seus rolos de filamento para calcular o custo de material automaticamente ao criar uma peça.
-              </p>
+            <div className="bg-white rounded-2xl shadow-sm p-12 flex flex-col items-center gap-4 text-center">
+              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" className="opacity-60">
+                <circle cx="40" cy="40" r="38" fill="#EEF2FF" />
+                <circle cx="40" cy="40" r="18" fill="#C7D2FE" />
+                <circle cx="40" cy="40" r="8" fill="#EEF2FF" />
+                <circle cx="40" cy="40" r="3" fill="#4F46E5" />
+                <path d="M40 22 Q58 28 58 40 Q58 55 40 58 Q22 55 22 40 Q22 25 40 22Z"
+                  fill="none" stroke="#4F46E5" strokeWidth="1.5" strokeDasharray="4 3" />
+              </svg>
+              <div>
+                <p className="font-bold text-gray-700 text-base">Nenhum filamento cadastrado ainda</p>
+                <p className="text-sm text-gray-400 max-w-xs mt-1">
+                  Adicione seus rolos de PLA, PETG, ABS ou TPU para que o sistema calcule automaticamente o custo de material ao produzir.
+                </p>
+              </div>
               <button onClick={() => setShowNovo(true)}
-                className="mt-2 bg-indigo-600 text-white text-sm font-bold px-5 py-2 rounded-xl hover:opacity-90 transition">
-                Cadastrar primeiro filamento
+                className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:opacity-90 transition shadow-sm">
+                🧵 Cadastrar primeiro filamento
               </button>
             </div>
           )}
@@ -114,16 +123,17 @@ export function MateriaisTab() {
           {/* Grid de cards */}
           {materials.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {materials.map((m) => (
-                <MaterialCard
-                  key={m.id}
-                  material={m}
-                  editing={editingId === m.id}
-                  onEdit={() => setEditingId(m.id)}
-                  onCancelEdit={() => setEditingId(null)}
-                  onUpdate={(updates) => { updateMaterial(m.id, updates); setEditingId(null); }}
-                  onRemove={() => { if (confirm(`Remover "${m.nome}"?`)) removeMaterial(m.id); }}
-                />
+              {materials.map((m, idx) => (
+                <div key={m.id}>
+                  <MaterialCard
+                    material={m}
+                    editing={editingId === m.id}
+                    onEdit={() => setEditingId(m.id)}
+                    onCancelEdit={() => setEditingId(null)}
+                    onUpdate={(updates) => { updateMaterial(m.id, updates); setEditingId(null); }}
+                    onRemove={() => { if (confirm(`Remover "${m.nome}"?`)) removeMaterial(m.id); }}
+                  />
+                </div>
               ))}
             </div>
           )}

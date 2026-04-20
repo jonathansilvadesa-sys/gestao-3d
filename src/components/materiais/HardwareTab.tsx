@@ -28,6 +28,17 @@ const HORAS_SUGESTAO: Record<HardwareCategoria, number> = {
   outro:        1000,
 };
 
+// ─── Semáforo de saúde da peça ────────────────────────────────────────────────
+function getSemaforo(pctHoras: number, estoqueAlerta: boolean): {
+  cor: string; label: string; dot: string;
+} {
+  if (pctHoras >= 100 || estoqueAlerta)
+    return { cor: 'bg-red-500',    label: 'Crítico',  dot: 'bg-red-500 shadow-red-300' };
+  if (pctHoras >= 70)
+    return { cor: 'bg-amber-400',  label: 'Atenção',  dot: 'bg-amber-400 shadow-amber-200' };
+  return   { cor: 'bg-emerald-500',label: 'Saudável', dot: 'bg-emerald-500 shadow-emerald-200' };
+}
+
 // ─── Componente ───────────────────────────────────────────────────────────────
 export function HardwareTab() {
   const { pecas, addPeca, updatePeca, removePeca, adicionarHoras } = useHardware();
@@ -258,18 +269,65 @@ export function HardwareTab() {
 
       {/* ── Lista vazia ────────────────────────────────────────────────────── */}
       {pecas.length === 0 && !showForm && (
-        <div className="bg-white rounded-2xl shadow-sm p-12 flex flex-col items-center gap-3 text-center">
-          <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-3xl">🔧</div>
-          <p className="font-bold text-gray-700">Nenhuma peça de hardware cadastrada</p>
-          <p className="text-sm text-gray-400 max-w-xs">
-            Cadastre bicos, hotends, correias e sensores para acompanhar o desgaste e receber alertas de reposição.
-          </p>
+        <div className="bg-white rounded-2xl shadow-sm p-12 flex flex-col items-center gap-4 text-center">
+          {/* Ilustração SVG */}
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none" className="opacity-60">
+            <circle cx="40" cy="40" r="38" fill="#EEF2FF" />
+            <rect x="28" y="22" width="24" height="36" rx="4" fill="#C7D2FE" />
+            <rect x="33" y="28" width="14" height="3" rx="1.5" fill="#818CF8" />
+            <rect x="33" y="35" width="9" height="3" rx="1.5" fill="#818CF8" />
+            <circle cx="52" cy="53" r="10" fill="#4F46E5" />
+            <path d="M48 53h8M52 49v8" stroke="white" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          <div>
+            <p className="font-bold text-gray-700 text-base">Nenhuma peça cadastrada ainda</p>
+            <p className="text-sm text-gray-400 max-w-xs mt-1">
+              Cadastre bicos, hotends, correias e sensores para monitorar o desgaste e receber alertas antes que sua impressora pare.
+            </p>
+          </div>
           <button onClick={abrirNovo}
-            className="mt-2 bg-indigo-600 text-white text-sm font-bold px-5 py-2 rounded-xl hover:opacity-90 transition">
-            Cadastrar primeira peça
+            className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:opacity-90 transition shadow-sm">
+            🔧 Cadastrar primeira peça
           </button>
         </div>
       )}
+
+      {/* ── Painel de saúde geral (semáforo resumido) ──────────────────────── */}
+      {pecas.length > 0 && (() => {
+        const criticos  = pecas.filter(p => {
+          const pct = p.horasVidaUtil > 0 ? (p.horasUsadas / p.horasVidaUtil) * 100 : 0;
+          return pct >= 100 || (p.estoqueMinimo > 0 && p.estoqueAtual <= p.estoqueMinimo);
+        }).length;
+        const atencao = pecas.filter(p => {
+          const pct = p.horasVidaUtil > 0 ? (p.horasUsadas / p.horasVidaUtil) * 100 : 0;
+          const estOk = !(p.estoqueMinimo > 0 && p.estoqueAtual <= p.estoqueMinimo);
+          return pct >= 70 && pct < 100 && estOk;
+        }).length;
+        const saudaveis = pecas.length - criticos - atencao;
+        return (
+          <div className="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4">
+            <p className="text-xs font-semibold text-gray-500 flex-1">Saúde do Hardware</p>
+            <div className="flex items-center gap-3 text-xs font-bold">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+                <span className="text-emerald-700">{saudaveis} saudável{saudaveis !== 1 ? 'is' : ''}</span>
+              </span>
+              {atencao > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
+                  <span className="text-amber-700">{atencao} atenção</span>
+                </span>
+              )}
+              {criticos > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />
+                  <span className="text-red-700">{criticos} crítico{criticos !== 1 ? 's' : ''}</span>
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Grid de cards ──────────────────────────────────────────────────── */}
       {pecas.length > 0 && (
@@ -280,10 +338,11 @@ export function HardwareTab() {
             const pctEstoque = p.estoqueMinimo > 0 ? Math.min(100, (p.estoqueAtual / (p.estoqueMinimo * 3)) * 100) : 100;
             const horasRestantes = Math.max(0, p.horasVidaUtil - p.horasUsadas);
             const horasAlerta = pctHoras >= 100;
-            const horasAviso  = pctHoras >= 90 && !horasAlerta;
+            const horasAviso  = pctHoras >= 70 && !horasAlerta;
             const estoqueAlerta = p.estoqueMinimo > 0 && p.estoqueAtual <= p.estoqueMinimo;
-            const barHoraCor = horasAlerta ? 'bg-red-500' : horasAviso ? 'bg-amber-400' : 'bg-indigo-500';
+            const barHoraCor = horasAlerta ? 'bg-red-500' : pctHoras >= 90 ? 'bg-amber-400' : 'bg-indigo-500';
             const barEstoqueCor = estoqueAlerta ? 'bg-red-500' : 'bg-emerald-500';
+            const semaforo = getSemaforo(pctHoras, estoqueAlerta);
             const printerNome = p.impressoraId
               ? allPrinters.find((pr) => pr.id === p.impressoraId)
                   ? `${allPrinters.find((pr) => pr.id === p.impressoraId)!.marca} ${allPrinters.find((pr) => pr.id === p.impressoraId)!.nome}`
@@ -298,15 +357,24 @@ export function HardwareTab() {
                 {/* Topo */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-xl">
-                      {catInfo.emoji}
+                    {/* Semáforo de saúde + ícone de categoria */}
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-xl">
+                        {catInfo.emoji}
+                      </div>
+                      {/* Dot de semáforo no canto superior direito */}
+                      <span
+                        title={`Saúde: ${semaforo.label}`}
+                        className={`absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white shadow-md ${semaforo.dot}`}
+                      />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-bold text-gray-800 leading-none">{p.nome}</p>
-                        {(horasAlerta || estoqueAlerta) && (
-                          <span className="text-[10px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">⚠ Alerta</span>
-                        )}
+                        {/* Badge semáforo textual */}
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white ${semaforo.cor}`}>
+                          {semaforo.label}
+                        </span>
                       </div>
                       <p className="text-xs text-gray-400 mt-1">{printerNome}</p>
                     </div>

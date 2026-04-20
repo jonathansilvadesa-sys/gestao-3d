@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { StatCard } from '@/components/shared/StatCard';
+import { InfoTooltip } from '@/components/shared/Tooltip';
 import { R, COLORS } from '@/utils/formatters';
 import type { Product } from '@/types';
 
@@ -87,7 +88,11 @@ export function EstoqueTab({ products, onProduzir, onVender, onAjustar, onFalha 
   return (
     <div className="space-y-6">
       {/* ── KPI cards ─────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {/* data-tour="taxa-falha" aqui serve de fallback quando não há produtos */}
+      <div
+        data-tour={products.length === 0 ? 'taxa-falha' : undefined}
+        className="grid grid-cols-2 gap-4 sm:grid-cols-4"
+      >
         <StatCard label="Em estoque"      value={`${totalItens} un.`}   color="indigo" />
         <StatCard label="Total vendido"   value={`${totalVendido} un.`} color="emerald" />
         <StatCard label="Capital (custo)" value={R(valorCusto)}          color="purple" />
@@ -96,7 +101,11 @@ export function EstoqueTab({ products, onProduzir, onVender, onAjustar, onFalha 
 
       {/* ── Lista de produtos ──────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-gray-100">
+        {/* data-tour="btn-produzir" aqui serve de fallback quando não há produtos cadastrados */}
+        <div
+          data-tour={products.length === 0 ? 'btn-produzir' : undefined}
+          className="p-5 border-b border-gray-100"
+        >
           <h3 className="font-bold text-gray-700">Controle de Estoque</h3>
           <p className="text-xs text-gray-400 mt-1">
             Use <strong>Produzir</strong> para somar peças prontas e descontar insumos ·
@@ -145,7 +154,10 @@ export function EstoqueTab({ products, onProduzir, onVender, onAjustar, onFalha 
                       </span>
                     </div>
                     {/* Métricas de estoque + taxa de falha */}
-                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 flex-wrap">
+                  <div
+                    data-tour={i === 0 ? 'taxa-falha' : undefined}
+                    className="flex items-center gap-3 mt-1 text-xs text-gray-400 flex-wrap"
+                  >
                     <span>🖨️ <strong className="text-gray-600">{estoque}</strong> em estoque</span>
                     <span>🏷️ <strong className="text-emerald-600">{vendido}</strong> vendidos</span>
                     <span className="text-purple-500 font-semibold">{R(estoque * p.custoUn)} capital</span>
@@ -157,8 +169,15 @@ export function EstoqueTab({ products, onProduzir, onVender, onAjustar, onFalha 
                       const taxa      = perdidas / total;
                       const cor       = taxa > 0.15 ? 'text-red-500' : taxa > 0.05 ? 'text-amber-500' : 'text-gray-400';
                       return (
-                        <span className={`font-semibold ${cor}`} title={`${perdidas} falha${perdidas !== 1 ? 's' : ''} em ${total} tentativa${total !== 1 ? 's' : ''}`}>
+                        <span
+                          className={`font-semibold ${cor} flex items-center gap-0.5`}
+                        >
                           💀 {(taxa * 100).toFixed(1)}% falha
+                          <InfoTooltip
+                            text={`Taxa de Falha Real: ${(taxa * 100).toFixed(1)}% das ${total} impressões falharam (${perdidas} perdida${perdidas !== 1 ? 's' : ''}). Abaixo de 5% é normal; acima de 15% indica problema recorrente que precisa de investigação.`}
+                            position="top"
+                            size={11}
+                          />
                         </span>
                       );
                     })()}
@@ -169,6 +188,7 @@ export function EstoqueTab({ products, onProduzir, onVender, onAjustar, onFalha 
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     {/* Produzir */}
                     <button
+                      data-tour={i === 0 ? 'btn-produzir' : undefined}
                       onClick={() => setEstado(p.id, acaoAtiva === 'producao' ? null : 'producao', '')}
                       title="Registrar Produção"
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${

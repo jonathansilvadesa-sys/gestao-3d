@@ -1,9 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAuth }           from '@/contexts/AuthContext';
 import { useProducts }       from '@/contexts/ProductContext';
 import { useSettings }       from '@/contexts/SettingsContext';
 import { useAcessorios }     from '@/contexts/AcessorioContext';
 import { useMaterials }      from '@/contexts/MaterialContext';
+import { useToast }          from '@/contexts/ToastContext';
+import { useTour }           from '@/contexts/TourContext';
 import { LoginPage }         from '@/components/auth/LoginPage';
 import { Header }            from '@/components/layout/Header';
 import { Dashboard }         from '@/components/dashboard/Dashboard';
@@ -12,7 +14,8 @@ import { EstoqueTab }        from '@/components/estoque/EstoqueTab';
 import { MateriaisTab }      from '@/components/materiais/MateriaisTab';
 import { ProductModal }      from '@/components/products/ProductModal';
 import { EditProductModal }  from '@/components/products/EditProductModal';
-import { NovaModal }         from '@/components/products/NovaModal';
+import { NovaModal }           from '@/components/products/NovaModal';
+import { FloatingHelpButton }  from '@/components/shared/FloatingHelpButton';
 import type { AppTab, Product, EstoqueMovimento } from '@/types';
 
 
@@ -22,6 +25,8 @@ export default function App() {
   const { registrarVenda }                                      = useSettings();
   const { addMovimento }                                        = useAcessorios();
   const { materials, updateMaterial }                           = useMaterials();
+  const { addToast }                                            = useToast();
+  const { startTour, tourCompleted, registerNavigate }          = useTour();
 
   const [tab, setTab]                   = useState<AppTab>('dashboard');
   const [selected, setSelected]         = useState<Product | null>(null);
@@ -29,6 +34,20 @@ export default function App() {
   const [showNova, setShowNova]         = useState(false);
 
   const totalEstoque = products.reduce((a, p) => a + (p.estoque ?? 0), 0);
+
+  // Injeta a função de navegação de aba no TourContext (uma vez na montagem)
+  useEffect(() => {
+    registerNavigate(setTab);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-inicia o tour na primeira vez que o usuário faz login
+  useEffect(() => {
+    if (isAuthenticated && !tourCompleted) {
+      // Pequeno delay para o DOM estar pronto com os data-tour targets
+      const t = setTimeout(() => startTour(), 800);
+      return () => clearTimeout(t);
+    }
+  }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Contagem de alertas de break-even para o sininho do Header
   const breakEvenCount = useMemo(() => products.filter((p) => {
@@ -102,6 +121,21 @@ export default function App() {
                 unidadesProduzidas: (product.unidadesProduzidas ?? 0) + qty,
                 movimentosEstoque: [mov, ...(product.movimentosEstoque ?? [])].slice(0, 50),
               });
+              // Toast de confirmação com resumo do abatimento de filamentos
+              const nomesFil = product.filamentos
+                .filter((fl) => fl.materialId != null)
+                .map((fl) => {
+                  const m = materials.find((x) => x.id === fl.materialId);
+                  return m ? `${(fl.peso * qty).toFixed(1)}g de ${m.nome}` : null;
+                })
+                .filter(Boolean)
+                .join(', ');
+              addToast(
+                nomesFil
+                  ? `✅ ${qty} un. produzida${qty > 1 ? 's' : ''}! Descontado: ${nomesFil}`
+                  : `✅ ${qty} un. de "${product.nome}" adicionada${qty > 1 ? 's' : ''} ao estoque`,
+                'success',
+              );
             }}
 
             // ── Venda: subtrai do estoque + registra faturamento + deduz acessórios
@@ -139,6 +173,18 @@ export default function App() {
                 totalVendido: (product.totalVendido ?? 0) + vendendo,
                 movimentosEstoque: [mov, ...(product.movimentosEstoque ?? [])].slice(0, 50),
               });
+              // Toast de confirmação de venda
+              const nomesAcc = product.acessorios
+                .filter((a) => a.catalogId && a.varianteId)
+                .map((a) => a.nome)
+                .filter(Boolean)
+                .join(', ');
+              addToast(
+                nomesAcc
+                  ? `🏷️ Venda de ${vendendo} un.! Acessórios descontados: ${nomesAcc}`
+                  : `🏷️ Venda de ${vendendo} un. de "${product.nome}" registrada`,
+                'success',
+              );
             }}
 
             // ── Falha de impressão: deduz filamento, não mexe em acessórios ──
@@ -171,6 +217,21 @@ export default function App() {
                 unidadesProduzidas: (product.unidadesProduzidas ?? 0) + qty, // também conta como tentativa
                 movimentosEstoque: [mov, ...(product.movimentosEstoque ?? [])].slice(0, 50),
               });
+              // Toast de falha
+              const nomesFalha = product.filamentos
+                .filter((fl) => fl.materialId != null)
+                .map((fl) => {
+                  const m = materials.find((x) => x.id === fl.materialId);
+                  return m ? `${(fl.peso * qty).toFixed(1)}g de ${m.nome}` : null;
+                })
+                .filter(Boolean)
+                .join(', ');
+              addToast(
+                nomesFalha
+                  ? `⚠️ Falha registrada. Filamento consumido: ${nomesFalha}`
+                  : `⚠️ Falha de ${qty} un. de "${product.nome}" registrada`,
+                'warning',
+              );
             }}
 
             // ── Ajuste manual: seta diretamente, sem gatilhos de insumos ─────
@@ -206,6 +267,9 @@ export default function App() {
       {showNova && (
         <NovaModal onClose={() => setShowNova(false)} onAdd={addProduct} />
       )}
+
+      {/* Botão flutuante (?) para relançar o tour */}
+      <FloatingHelpButton />
     </div>
   );
 }

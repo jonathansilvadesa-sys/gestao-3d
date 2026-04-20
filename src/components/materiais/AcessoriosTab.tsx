@@ -485,15 +485,23 @@ export function AcessoriosTab() {
 
       {/* Lista vazia */}
       {acessorios.length === 0 && (
-        <div className="bg-white rounded-2xl shadow-sm p-12 flex flex-col items-center gap-3 text-center">
-          <div className="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center text-3xl">🔩</div>
-          <p className="font-bold text-gray-700">Nenhum acessório cadastrado</p>
-          <p className="text-sm text-gray-400 max-w-xs">
-            Cadastre imãs, parafusos, embalagens e outros componentes para controlar o estoque e o custo dos seus projetos.
-          </p>
+        <div className="bg-white rounded-2xl shadow-sm p-12 flex flex-col items-center gap-4 text-center">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none" className="opacity-60">
+            <circle cx="40" cy="40" r="38" fill="#F5F3FF" />
+            <rect x="24" y="26" width="32" height="28" rx="5" fill="#DDD6FE" />
+            <circle cx="34" cy="40" r="5" fill="#7C3AED" />
+            <circle cx="46" cy="40" r="5" fill="#7C3AED" />
+            <line x1="34" y1="40" x2="46" y2="40" stroke="#7C3AED" strokeWidth="2" />
+          </svg>
+          <div>
+            <p className="font-bold text-gray-700 text-base">Nenhum acessório cadastrado ainda</p>
+            <p className="text-sm text-gray-400 max-w-xs mt-1">
+              Imãs, parafusos, inserts, embalagens — cadastre aqui para controlar o custo real de cada peça e nunca ficar sem estoque.
+            </p>
+          </div>
           <button onClick={() => setShowNovo(true)}
-            className="mt-2 bg-indigo-600 text-white text-sm font-bold px-5 py-2 rounded-xl hover:opacity-90 transition">
-            Cadastrar primeiro acessório
+            className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:opacity-90 transition shadow-sm">
+            🔩 Cadastrar primeiro acessório
           </button>
         </div>
       )}

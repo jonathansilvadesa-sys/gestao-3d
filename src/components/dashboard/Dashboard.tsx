@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { StatCard } from '@/components/shared/StatCard';
 import { Badge } from '@/components/shared/Badge';
+import { InfoTooltip } from '@/components/shared/Tooltip';
 import { R, margem, COLORS, truncate } from '@/utils/formatters';
 import { exportarRelatorioPDF } from '@/utils/exportPdf';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -124,6 +125,7 @@ export function Dashboard({ products, onSelect, onEdit }: Props) {
           value={`${totals.avgMarkup}x`}
           sub={totals.maisLucrativo ? `+ lucrativo: ${totals.maisLucrativo.nome}` : undefined}
           color="pink"
+          tooltip="Markup é o multiplicador aplicado sobre o custo de produção para chegar ao preço de venda. Ex: markup 2x = preço = 2× o custo."
         />
       </div>
 
@@ -175,7 +177,7 @@ export function Dashboard({ products, onSelect, onEdit }: Props) {
 
       {/* Estoque — visão contábil */}
       {totals.totalItens > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm p-5">
+        <div className="bg-white rounded-2xl shadow-sm p-5" data-tour="dashboard-patrimonio">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="font-bold text-gray-700">📦 Estoque — Visão Contábil</h3>
@@ -208,11 +210,17 @@ export function Dashboard({ products, onSelect, onEdit }: Props) {
 
       {/* ── Alertas de Break-even ──────────────────────────────────────────── */}
       {alertasBreakeeven.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm p-5">
+        <div className="bg-white rounded-2xl shadow-sm p-5" data-tour="dashboard-breakeven">
           <div className="flex items-center gap-2 mb-3">
             <span className="text-base">⚠️</span>
             <div>
-              <h3 className="font-bold text-amber-700">Ponto de Equilíbrio não atingido</h3>
+              <div className="flex items-center gap-1">
+                <h3 className="font-bold text-amber-700">Ponto de Equilíbrio não atingido</h3>
+                <InfoTooltip
+                  text="Break-even (ponto de equilíbrio) é a quantidade mínima de vendas necessária para recuperar o custo de produção investido. Abaixo disso, o capital ainda está 'preso' no estoque."
+                  position="right"
+                />
+              </div>
               <p className="text-xs text-gray-400 mt-0.5">
                 {alertasBreakeeven.length} {alertasBreakeeven.length === 1 ? 'produto precisa' : 'produtos precisam'} de mais vendas para recuperar o capital investido
               </p>

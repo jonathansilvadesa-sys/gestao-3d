@@ -8,6 +8,7 @@ import { calcProductFromForm, calcMarkupFromMargem } from '@/utils/calc';
 import { R } from '@/utils/formatters';
 import { custoPorGrama } from '@/types';
 import { parseGcode, formatarTempo, type GcodeMetadata } from '@/utils/gcodeParser';
+import { InfoTooltip } from '@/components/shared/Tooltip';
 import type { Product, ProductForm } from '@/types';
 
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
@@ -782,7 +783,13 @@ export function NovaModal({ onClose, onAdd }: Props) {
           {/* ── Markup / Meta de margem ───────────────────────────────────── */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <SectionTitle>📈 Precificação</SectionTitle>
+              <div className="flex items-center">
+                <SectionTitle>📈 Precificação</SectionTitle>
+                <InfoTooltip
+                  text="Markup é o multiplicador sobre o custo de produção. Markup 3x = preço final é 3× o custo. Use 'Meta de margem' para calcular o markup automaticamente a partir da margem de lucro desejada."
+                  position="right"
+                />
+              </div>
               <div className="ml-auto flex rounded-xl overflow-hidden border border-gray-200 text-xs font-semibold">
                 <button
                   type="button"
