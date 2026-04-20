@@ -5,11 +5,12 @@ interface Props {
   products: Product[];
   onProduzir: (id: number, qty: number) => void;
   onFalha:    (id: number, qty: number) => void;
+  onNovaPeca: () => void;
 }
 
 type Acao = 'producao' | 'falha';
 
-export function QuickActionFAB({ products, onProduzir, onFalha }: Props) {
+export function QuickActionFAB({ products, onProduzir, onFalha, onNovaPeca }: Props) {
   const [open, setOpen]           = useState(false);
   const [acao, setAcao]           = useState<Acao | null>(null);
   const [produtoId, setProdutoId] = useState<number | null>(null);
@@ -94,6 +95,19 @@ export function QuickActionFAB({ products, onProduzir, onFalha }: Props) {
                   </button>
                 </div>
               )}
+              {/* Nova Peça — sempre visível */}
+              <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                <button
+                  onClick={() => { fechar(); onNovaPeca(); }}
+                  className="w-full flex items-center gap-3 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 font-semibold text-sm px-4 py-3 rounded-xl transition"
+                >
+                  <span className="text-xl">➕</span>
+                  <div className="text-left">
+                    <p className="font-bold">Nova Peça</p>
+                    <p className="text-xs font-normal opacity-70">Cadastrar produto novo</p>
+                  </div>
+                </button>
+              </div>
             </>
           )}
 

@@ -350,6 +350,7 @@ export default function App() {
           });
           addToast(`💀 ${qty} falha(s) de ${product.nome} registrada(s)`, 'warning');
         }}
+        onNovaPeca={() => setShowNova(true)}
       />
     </div>
   );
