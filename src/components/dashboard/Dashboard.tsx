@@ -87,18 +87,20 @@ export function Dashboard({ products, onSelect, onEdit }: Props) {
     <>
       {/* KPI cards + botões */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h2 className="font-bold text-gray-700 text-lg">Visão Geral</h2>
+        <h2 className="font-bold text-gray-700 dark:text-gray-200 text-lg">Visão Geral</h2>
         <div className="flex items-center gap-2">
+          {/* Label visível apenas no desktop */}
           <button
             onClick={() => setShowComparator(true)}
-            className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-gray-50 transition shadow-sm"
+            className="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-sm font-semibold px-3 py-2 rounded-xl hover:bg-gray-50 transition shadow-sm"
           >
-            <span>⚖️</span> Comparar Impressoras
+            <span>⚖️</span>
+            <span className="hidden sm:inline">Comparar Impressoras</span>
           </button>
           <button
             onClick={handleExport}
             disabled={exporting || products.length === 0}
-            className="flex items-center gap-2 bg-white border border-gray-200 text-gray-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-gray-50 disabled:opacity-50 transition shadow-sm"
+            className="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 text-sm font-semibold px-3 py-2 rounded-xl hover:bg-gray-50 disabled:opacity-50 transition shadow-sm"
           >
             {exporting ? (
               <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -111,7 +113,8 @@ export function Dashboard({ products, onSelect, onEdit }: Props) {
                 <line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
             )}
-            {exporting ? 'Gerando PDF…' : 'Exportar PDF'}
+            <span className="hidden sm:inline">{exporting ? 'Gerando PDF…' : 'Exportar PDF'}</span>
+            <span className="sm:hidden">{exporting ? '…' : 'PDF'}</span>
           </button>
         </div>
       </div>

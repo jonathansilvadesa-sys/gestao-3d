@@ -16,6 +16,8 @@ import { ProductModal }      from '@/components/products/ProductModal';
 import { EditProductModal }  from '@/components/products/EditProductModal';
 import { NovaModal }           from '@/components/products/NovaModal';
 import { FloatingHelpButton }  from '@/components/shared/FloatingHelpButton';
+import { BottomTabBar }         from '@/components/layout/BottomTabBar';
+import { QuickActionFAB }       from '@/components/shared/QuickActionFAB';
 import type { AppTab, Product, EstoqueMovimento } from '@/types';
 
 
@@ -70,7 +72,8 @@ export default function App() {
         breakEvenCount={breakEvenCount}
       />
 
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+      {/* pb-20 no mobile: espaço para a BottomTabBar (sm:pb-6 restaura o padrão no desktop) */}
+      <main className="max-w-5xl mx-auto px-4 py-6 pb-24 sm:pb-6 space-y-6">
         {tab === 'dashboard' && (
           <Dashboard
             products={products}
@@ -268,8 +271,86 @@ export default function App() {
         <NovaModal onClose={() => setShowNova(false)} onAdd={addProduct} />
       )}
 
-      {/* Botão flutuante (?) para relançar o tour */}
+      {/* Botão flutuante (?) — no mobile sobe para não sobrepor a BottomTabBar */}
       <FloatingHelpButton />
+
+      {/* BottomTabBar — só mobile */}
+      <BottomTabBar
+        tab={tab}
+        setTab={setTab}
+        totalEstoque={totalEstoque}
+      />
+
+      {/* FAB de ação rápida — só mobile */}
+      <QuickActionFAB
+        products={products}
+        onProduzir={(id, qty) => {
+          const product = products.find((p) => p.id === id);
+          if (!product || qty <= 0) return;
+          product.filamentos.forEach((fl) => {
+            if (fl.materialId != null) {
+              const mat = materials.find((m) => m.id === fl.materialId);
+              if (mat) {
+                updateMaterial(fl.materialId, {
+                  pesoAtual: Math.max(0, +(mat.pesoAtual - fl.peso * qty).toFixed(1)),
+                });
+              }
+            }
+          });
+          const mov: EstoqueMovimento = {
+            id: `em_${Date.now()}`,
+            tipo: 'producao',
+            quantidade: qty,
+            data: new Date().toISOString(),
+            motivo: `Produção rápida de ${qty} un. (FAB)`,
+          };
+          updateProduct(id, {
+            estoque: (product.estoque ?? 0) + qty,
+            unidadesProduzidas: (product.unidadesProduzidas ?? 0) + qty,
+            movimentosEstoque: [...(product.movimentosEstoque ?? []), mov],
+          });
+          const nomes = product.filamentos
+            .filter((fl) => fl.materialId != null)
+            .map((fl) => {
+              const mat = materials.find((m) => m.id === fl.materialId);
+              return mat ? `${(fl.peso * qty).toFixed(1)}g de ${mat.nome}` : null;
+            })
+            .filter(Boolean);
+          addToast(
+            nomes.length
+              ? `+${qty} ${product.nome} · ${nomes.join(', ')}`
+              : `+${qty} ${product.nome} adicionado(s) ao estoque`,
+            'success'
+          );
+        }}
+        onFalha={(id, qty) => {
+          const product = products.find((p) => p.id === id);
+          if (!product || qty <= 0) return;
+          product.filamentos.forEach((fl) => {
+            if (fl.materialId != null) {
+              const mat = materials.find((m) => m.id === fl.materialId);
+              if (mat) {
+                updateMaterial(fl.materialId, {
+                  pesoAtual: Math.max(0, +(mat.pesoAtual - fl.peso * qty).toFixed(1)),
+                });
+              }
+            }
+          });
+          const mov: EstoqueMovimento = {
+            id: `em_${Date.now()}`,
+            tipo: 'falha',
+            quantidade: qty,
+            data: new Date().toISOString(),
+            motivo: `Falha registrada via FAB`,
+          };
+          updateProduct(id, {
+            unidadesProduzidas: (product.unidadesProduzidas ?? 0) + qty,
+            unidadesPerdidas: (product.unidadesPerdidas ?? 0) + qty,
+            movimentosEstoque: [...(product.movimentosEstoque ?? []), mov],
+          });
+          addToast(`💀 ${qty} falha(s) de ${product.nome} registrada(s)`, 'warning');
+        }}
+      />
     </div>
   );
 }

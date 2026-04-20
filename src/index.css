@@ -15,6 +15,10 @@
   from { opacity: 0; transform: scale(0.92); }
   to   { opacity: 1; transform: scale(1); }
 }
+@keyframes fabPanelIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
 
 /* ── Joyride custom beacon ────────────────────────────────────── */
 .__floater__arrow polygon { fill: #1e1b4b; }

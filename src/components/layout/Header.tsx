@@ -85,8 +85,8 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, breakEvenCount =
             </div>
           </div>
 
-          {/* Tabs */}
-          <nav className="flex gap-1 flex-1 justify-center">
+          {/* Tabs — ocultas no mobile (substituídas pelo BottomTabBar) */}
+          <nav className="hidden sm:flex gap-1 flex-1 justify-center">
             {TABS.map(({ key, label, icon }) => (
               <button
                 key={key}

@@ -26,13 +26,13 @@ export function ProductsTab({ products, onSelect, onEdit, onRemove }: Props) {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-      <div className="p-5 border-b border-gray-100 flex items-center gap-3">
-        <h3 className="font-bold text-gray-700 flex-1">Todas as Peças</h3>
+      <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-700 flex flex-wrap items-center gap-2 sm:gap-3">
+        <h3 className="font-bold text-gray-700 dark:text-gray-200 flex-1 min-w-0">Todas as Peças</h3>
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar peça..."
-          className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 w-44"
+          className="border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 w-full sm:w-44 order-3 sm:order-none"
         />
         <button
           onClick={handleExport}

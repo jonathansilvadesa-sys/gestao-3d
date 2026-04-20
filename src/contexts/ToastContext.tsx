@@ -92,7 +92,7 @@ function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: 
   return (
     <div
       aria-live="polite"
-      className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2 pointer-events-none"
+      className="fixed bottom-6 right-4 sm:right-6 z-[9999] flex flex-col gap-2 pointer-events-none w-[calc(100vw-2rem)] sm:w-auto"
       style={{ maxWidth: 360 }}
     >
       {toasts.map((t) => {
