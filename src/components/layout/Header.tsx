@@ -72,15 +72,15 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, breakEvenCount =
   return (
     <>
       <header className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 flex items-center gap-2 sm:gap-3">
 
           {/* Logo */}
-          <div className="flex items-center gap-3 mr-2">
-            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-lg">
+          <div className="flex items-center gap-2 sm:gap-3 mr-1 sm:mr-2">
+            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
               🖨
             </div>
             <div className="hidden sm:block">
-              <h1 className="font-bold text-gray-800 leading-none">Gestão 3D</h1>
+              <h1 className="font-bold text-gray-800 dark:text-gray-100 leading-none">Gestão 3D</h1>
               <p className="text-xs text-gray-400">Controle de Custos</p>
             </div>
           </div>
@@ -93,7 +93,7 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, breakEvenCount =
                 data-tour={`tab-${key}`}
                 onClick={() => setTab(key)}
                 className={`px-3 py-2 rounded-xl text-sm font-semibold transition relative flex items-center gap-1.5 ${
-                  tab === key ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:bg-gray-100'
+                  tab === key ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'
                 }`}
               >
                 <span className="hidden sm:inline">{icon}</span>
@@ -107,17 +107,19 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, breakEvenCount =
             ))}
           </nav>
 
-          {/* Ações à direita */}
-          <div className="flex items-center gap-2">
+          {/* Espaçador — empurra ações para a direita no mobile */}
+          <div className="flex-1 sm:hidden" />
 
-            {/* ── Botão Tema Claro/Escuro ──────────────────────────────── */}
+          {/* Ações à direita */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+
+            {/* ── Botão Tema — oculto no mobile ────────────────────────── */}
             <button
               onClick={toggleTheme}
               title={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
-              className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center transition text-gray-500 dark:text-gray-300"
+              className="hidden sm:flex w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 items-center justify-center transition text-gray-500 dark:text-gray-300"
             >
               {theme === 'dark' ? (
-                /* Sol */
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="5"/>
                   <line x1="12" y1="1" x2="12" y2="3"/>
@@ -130,14 +132,13 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, breakEvenCount =
                   <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
                 </svg>
               ) : (
-                /* Lua */
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
                 </svg>
               )}
             </button>
 
-            {/* ── Sininho de Notificações ──────────────────────────────── */}
+            {/* ── Sininho de Notificações — sempre visível ─────────────── */}
             <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setShowNotif((v) => !v)}
@@ -332,17 +333,19 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, breakEvenCount =
               )}
             </div>
 
+            {/* ── Configurações — oculto no mobile ─────────────────── */}
             <button
               onClick={() => setShowSettings(true)}
               title="Configurações globais"
-              className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center transition text-gray-500 dark:text-gray-300"
+              className="hidden sm:flex w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 items-center justify-center transition text-gray-500 dark:text-gray-300"
             >
               ⚙️
             </button>
 
+            {/* ── Nova Peça — oculto no mobile (disponível no FAB) ───── */}
             <button
               onClick={onNovaPeca}
-              className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-bold px-4 py-2 rounded-xl hover:opacity-90 transition hidden sm:block"
+              className="hidden sm:flex bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-bold px-4 py-2 rounded-xl hover:opacity-90 transition items-center gap-1.5"
             >
               + Nova Peça
             </button>
@@ -372,6 +375,13 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, breakEvenCount =
                     onClick={() => { setShowSettings(true); setShowUserMenu(false); }}
                     className="w-full text-left px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition"
                   >⚙️ Configurações</button>
+                  {/* Tema — visível apenas no mobile (desktop tem botão próprio) */}
+                  <button
+                    onClick={() => { toggleTheme(); setShowUserMenu(false); }}
+                    className="sm:hidden w-full text-left px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition"
+                  >
+                    {theme === 'dark' ? '🌞 Tema Claro' : '🌙 Tema Escuro'}
+                  </button>
                   <button
                     onClick={logout}
                     className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition"
