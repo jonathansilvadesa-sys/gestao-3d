@@ -292,3 +292,233 @@ export async function exportarRelatorioPDF(products: Product[]): Promise<void> {
 
   doc.save(`gestao3d-relatorio-${Date.now()}.pdf`);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RELATÓRIO DE VENDAS MENSAIS
+// ═══════════════════════════════════════════════════════════════════════════════
+export async function exportarRelatorioVendasMensais(products: Product[]): Promise<void> {
+  const { default: jsPDF } = await import('jspdf');
+  const { default: autoTable } = await import('jspdf-autotable');
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const fmtBRL = (v: number) =>
+    v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  const fmtMes = (ym: string) => {
+    const [y, m] = ym.split('-');
+    const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    return `${meses[parseInt(m) - 1]} ${y}`;
+  };
+
+  const now = new Date().toLocaleString('pt-BR');
+
+  // ── Agrupa movimentos por mês ─────────────────────────────────────────────
+  type MovMes = {
+    faturamento: number;
+    unidades: number;
+    porPeca: Record<number, { nome: string; unidades: number; faturamento: number }>;
+  };
+  const porMes: Record<string, MovMes> = {};
+
+  for (const p of products) {
+    for (const m of p.movimentosEstoque ?? []) {
+      if (m.tipo !== 'venda') continue;
+      const mes = m.data.slice(0, 7);
+      if (!porMes[mes]) porMes[mes] = { faturamento: 0, unidades: 0, porPeca: {} };
+      porMes[mes].faturamento += m.quantidade * p.precoConsumidor;
+      porMes[mes].unidades    += m.quantidade;
+      if (!porMes[mes].porPeca[p.id])
+        porMes[mes].porPeca[p.id] = { nome: p.nome, unidades: 0, faturamento: 0 };
+      porMes[mes].porPeca[p.id].unidades    += m.quantidade;
+      porMes[mes].porPeca[p.id].faturamento += m.quantidade * p.precoConsumidor;
+    }
+  }
+
+  const mesesOrdenados = Object.keys(porMes).sort();
+
+  if (mesesOrdenados.length === 0) {
+    // Sem dados — gera PDF simples de aviso
+    doc.setFontSize(14);
+    doc.text('Nenhuma venda registrada ainda.', 14, 30);
+    doc.setFontSize(10);
+    doc.text('Registre vendas na aba Estoque para visualizar o relatório mensal.', 14, 40);
+    doc.save(`gestao3d-vendas-${Date.now()}.pdf`);
+    return;
+  }
+
+  const totalGeral     = mesesOrdenados.reduce((s, m) => s + porMes[m].faturamento, 0);
+  const totalUnidades  = mesesOrdenados.reduce((s, m) => s + porMes[m].unidades, 0);
+  const mediaMensal    = totalGeral / mesesOrdenados.length;
+
+  // ── Cabeçalho ─────────────────────────────────────────────────────────────
+  doc.setFillColor(16, 185, 129);  // emerald-500
+  doc.rect(0, 0, 210, 22, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('GESTÃO 3D — Relatório de Vendas Mensais', 14, 14);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Gerado em: ${now}`, 196, 14, { align: 'right' });
+
+  // ── KPIs gerais ───────────────────────────────────────────────────────────
+  const kpiX = [14, 72, 130, 163];
+  const kpis = [
+    ['Meses registrados', String(mesesOrdenados.length)],
+    ['Faturamento total', fmtBRL(totalGeral)],
+    ['Média mensal', fmtBRL(mediaMensal)],
+    ['Total de unidades', String(totalUnidades)],
+  ];
+  kpis.forEach(([label, value], i) => {
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(107, 114, 128);
+    doc.text(label.toUpperCase(), kpiX[i], 31);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(17, 24, 39);
+    doc.text(value, kpiX[i], 38);
+  });
+
+  // ── Tabela resumo por mês ─────────────────────────────────────────────────
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(55, 65, 81);
+  doc.text('RESUMO POR MÊS', 14, 48);
+
+  const bodyMes = mesesOrdenados.map((m, idx) => {
+    const d = porMes[m];
+    const anterior = idx > 0 ? porMes[mesesOrdenados[idx - 1]].faturamento : null;
+    const variacao = anterior !== null && anterior > 0
+      ? ((d.faturamento / anterior - 1) * 100).toFixed(1) + '%'
+      : '—';
+    return [
+      fmtMes(m),
+      String(d.unidades),
+      fmtBRL(d.faturamento),
+      fmtBRL(d.faturamento / Math.max(d.unidades, 1)),
+      variacao,
+    ];
+  });
+
+  autoTable(doc, {
+    head: [['Mês', 'Unidades', 'Faturamento', 'Ticket Médio', 'Variação']],
+    body: bodyMes,
+    startY: 52,
+    styles: { fontSize: 9, cellPadding: 3, font: 'helvetica' },
+    headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: 'bold', halign: 'center' },
+    alternateRowStyles: { fillColor: [236, 253, 245] },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 40 },
+      1: { halign: 'center' },
+      2: { halign: 'right', textColor: [16, 185, 129] },
+      3: { halign: 'right' },
+      4: { halign: 'center' },
+    },
+    didDrawCell: (data) => {
+      if (data.section === 'body' && data.column.index === 4) {
+        const val = String(data.cell.text[0] ?? '');
+        if (val.startsWith('+') || (!val.startsWith('-') && val !== '—' && parseFloat(val) > 0)) {
+          data.cell.styles.textColor = [16, 185, 129];
+        } else if (val.startsWith('-')) {
+          data.cell.styles.textColor = [239, 68, 68];
+        }
+      }
+    },
+    didDrawPage: (data) => {
+      const pageCount = (doc as unknown as { internal: { getNumberOfPages: () => number } })
+        .internal.getNumberOfPages();
+      doc.setFontSize(7);
+      doc.setTextColor(156, 163, 175);
+      doc.text(`Página ${data.pageNumber} de ${pageCount}  •  Gestão 3D`, 105, 290, { align: 'center' });
+    },
+  });
+
+  // ── Totalizador ────────────────────────────────────────────────────────────
+  const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 4;
+  autoTable(doc, {
+    body: [
+      ['TOTAL GERAL', String(totalUnidades), fmtBRL(totalGeral), fmtBRL(totalGeral / Math.max(totalUnidades, 1)), ''],
+    ],
+    startY: finalY,
+    theme: 'plain',
+    styles: { fontSize: 9, fontStyle: 'bold', cellPadding: 3 },
+    columnStyles: {
+      0: { cellWidth: 40, textColor: [17, 24, 39] },
+      1: { halign: 'center' },
+      2: { halign: 'right', textColor: [16, 185, 129] },
+      3: { halign: 'right' },
+      4: { cellWidth: 20 },
+    },
+  });
+
+  // ── PÁGINA 2: Detalhamento por peça por mês ───────────────────────────────
+  doc.addPage();
+
+  doc.setFillColor(99, 102, 241);  // indigo-500
+  doc.rect(0, 0, 210, 22, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('GESTÃO 3D — Vendas por Peça / Mês', 14, 14);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Gerado em: ${now}`, 196, 14, { align: 'right' });
+
+  // Tabela cruzada: linhas = peças, colunas = meses (até 6 últimos)
+  const ultimos6 = mesesOrdenados.slice(-6);
+
+  // Todas as peças que tiveram vendas
+  const pecasComVenda = new Map<number, string>();
+  for (const mes of ultimos6) {
+    for (const [id, info] of Object.entries(porMes[mes].porPeca)) {
+      pecasComVenda.set(Number(id), info.nome);
+    }
+  }
+
+  const headCruzada = ['Peça', ...ultimos6.map(fmtMes), 'Total'];
+  const bodyCruzada = [...pecasComVenda.entries()].map(([id, nome]) => {
+    const row: (string | number)[] = [nome];
+    let total = 0;
+    for (const mes of ultimos6) {
+      const v = porMes[mes]?.porPeca[id]?.faturamento ?? 0;
+      total += v;
+      row.push(v > 0 ? fmtBRL(v) : '—');
+    }
+    row.push(fmtBRL(total));
+    return row;
+  }).sort((a, b) => {
+    const ta = parseFloat(String(a[a.length - 1]).replace(/[^0-9,]/g, '').replace(',', '.')) || 0;
+    const tb = parseFloat(String(b[b.length - 1]).replace(/[^0-9,]/g, '').replace(',', '.')) || 0;
+    return tb - ta;
+  });
+
+  // Linha de totais por mês
+  const totalPorMes = ultimos6.map((m) => fmtBRL(porMes[m]?.faturamento ?? 0));
+  const totalGeralStr = fmtBRL(ultimos6.reduce((s, m) => s + (porMes[m]?.faturamento ?? 0), 0));
+  bodyCruzada.push(['TOTAL', ...totalPorMes, totalGeralStr]);
+
+  autoTable(doc, {
+    head: [headCruzada],
+    body: bodyCruzada as string[][],
+    startY: 28,
+    styles: { fontSize: 7.5, cellPadding: 2.5, font: 'helvetica', valign: 'middle' },
+    headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold', halign: 'center', fontSize: 7 },
+    alternateRowStyles: { fillColor: [238, 242, 255] },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 38 },
+      [headCruzada.length - 1]: { fontStyle: 'bold', halign: 'right', textColor: [99, 102, 241] },
+    },
+    didDrawPage: (data) => {
+      const pageCount = (doc as unknown as { internal: { getNumberOfPages: () => number } })
+        .internal.getNumberOfPages();
+      doc.setFontSize(7);
+      doc.setTextColor(156, 163, 175);
+      doc.text(`Página ${data.pageNumber} de ${pageCount}  •  Gestão 3D`, 105, 290, { align: 'center' });
+    },
+  });
+
+  doc.save(`gestao3d-vendas-mensais-${Date.now()}.pdf`);
+}
