@@ -1,16 +1,15 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
-import { Joyride, STATUS } from 'react-joyride';
-import type { Step, EventData } from 'react-joyride';
+import { Joyride, STATUS, EVENTS } from 'react-joyride';
+import type { Step, EventData, Controls, BeforeHook } from 'react-joyride';
 import type { AppTab } from '@/types';
 
 // ─── Chave de controle ────────────────────────────────────────────────────────
 const TOUR_KEY = 'gestao3d_tourCompleted';
 
-// ─── Helper: aguarda o elemento aparecer no DOM (MutationObserver + timeout) ─
-function waitForElement(selector: string, timeout = 2500): Promise<void> {
+// ─── Helper: aguarda o elemento aparecer no DOM ───────────────────────────────
+function waitForElement(selector: string, timeout = 1500): Promise<void> {
   return new Promise((resolve) => {
     if (document.querySelector(selector)) { resolve(); return; }
-
     const observer = new MutationObserver(() => {
       if (document.querySelector(selector)) {
         observer.disconnect();
@@ -18,21 +17,14 @@ function waitForElement(selector: string, timeout = 2500): Promise<void> {
       }
     });
     observer.observe(document.body, { childList: true, subtree: true });
-    // Se o elemento não aparecer no prazo, resolve mesmo assim (não trava)
     setTimeout(() => { observer.disconnect(); resolve(); }, timeout);
   });
 }
 
-// ─── Mapeamento: índice do step → aba que precisa estar ativa ─────────────────
-const STEP_TAB: Record<number, { tab: AppTab; selector: string }> = {
-  4: { tab: 'estoque',   selector: '[data-tour="btn-produzir"]' },
-  5: { tab: 'estoque',   selector: '[data-tour="taxa-falha"]'   },
-  7: { tab: 'materiais', selector: '[data-tour="filamento-barra"]' },
-};
-
-// Steps que, no mobile, usam target body/center (elementos dentro de cards
-// com overflow-hidden podem estar fora do viewport ou não-posicionáveis)
-const MOBILE_BODY_STEPS = new Set([4, 5, 7]);
+// ─── Detecta mobile ───────────────────────────────────────────────────────────
+function isMobileViewport(): boolean {
+  return typeof window !== 'undefined' && window.innerWidth < 640;
+}
 
 // ─── Helper: conteúdo de cada step ────────────────────────────────────────────
 function StepContent({ title, children, note }: {
@@ -49,18 +41,43 @@ function StepContent({ title, children, note }: {
   );
 }
 
-// ─── Detecta mobile para ajustar posicionamento ───────────────────────────────
-function isMobileViewport(): boolean {
-  return typeof window !== 'undefined' && window.innerWidth < 640;
-}
+// ─── Construção dos steps ─────────────────────────────────────────────────────
+// A navegação entre abas é feita via `before` hook em cada step relevante.
+// Joyride v3 aguarda a Promise do `before` antes de renderizar o tooltip —
+// isso garante que o elemento alvo já está no DOM quando o Joyride posiciona.
+// No mobile, steps que apontam para elementos dentro de SwipeableCard usam
+// target:'body' + placement:'center' para evitar erro de posicionamento.
+function buildTourSteps(
+  navigate: ((tab: AppTab) => void) | null,
+  mobile: boolean,
+): Step[] {
 
-// ─── Steps do tour ────────────────────────────────────────────────────────────
-// Função chamada no início do tour (não na inicialização do módulo), para que
-// isMobileViewport() leia o tamanho real da tela naquele momento.
-// Steps 4, 5 e 7 apontam para elementos dentro de SwipeableCard/overflow-hidden;
-// no mobile usam target body + placement center para evitar congelamento.
-function buildTourSteps(): Step[] {
-  const mobile = isMobileViewport();
+  // Before hook — navega para estoque e aguarda o elemento (desktop only)
+  const beforeEstoque: BeforeHook = async () => {
+    navigate?.('estoque');
+    if (!mobile) {
+      await waitForElement('[data-tour="btn-produzir"]');
+    }
+    await new Promise<void>((r) => setTimeout(r, mobile ? 120 : 60));
+  };
+
+  // Before hook — step 5: permanece em estoque, aguarda taxa-falha (desktop)
+  const beforeTaxaFalha: BeforeHook = async () => {
+    if (!mobile) {
+      await waitForElement('[data-tour="taxa-falha"]');
+      await new Promise<void>((r) => setTimeout(r, 60));
+    }
+  };
+
+  // Before hook — navega para materiais e aguarda barra de filamento (desktop)
+  const beforeMateriais: BeforeHook = async () => {
+    navigate?.('materiais');
+    if (!mobile) {
+      await waitForElement('[data-tour="filamento-barra"]');
+    }
+    await new Promise<void>((r) => setTimeout(r, mobile ? 120 : 60));
+  };
+
   return [
   // ── 0 — Bem-vindo ──────────────────────────────────────────────────────────
   {
@@ -112,43 +129,55 @@ function buildTourSteps(): Step[] {
     offset: 12,
     content: (
       <StepContent title="📦 Aba de Estoque">
-        Aqui ficam os controles de movimentação. Cada produto tem 4 ações: <strong>Produzir</strong>, <strong>Vender</strong>, <strong>Falha</strong> e <strong>Ajuste manual</strong> — cada um com seus próprios efeitos nos insumos.
-        {mobile && <span className="block mt-1 text-indigo-500 text-xs">💡 No celular, deslize um card para a esquerda para ação rápida.</span>}
+        Aqui ficam os controles de movimentação. Cada produto tem 4 ações: <strong>Produzir</strong>, <strong>Vender</strong>, <strong>Falha</strong> e <strong>Ajuste manual</strong>.
+        {mobile && (
+          <span className="block mt-1 text-indigo-500 text-xs">
+            💡 No celular, deslize um card para a esquerda para ação rápida.
+          </span>
+        )}
       </StepContent>
     ),
   },
 
   // ── 4 — Botão Produzir ─────────────────────────────────────────────────────
-  // Mobile: target body/center (btn-produzir fica dentro de SwipeableCard overflow-hidden)
+  // before: navega para estoque e aguarda o elemento (desktop) / delay (mobile)
+  // mobile: usa body/center pois btn-produzir está dentro de SwipeableCard
   {
     target: mobile ? 'body' : '[data-tour="btn-produzir"]',
     placement: (mobile ? 'center' : 'left') as Step['placement'],
     skipBeacon: true,
+    before: beforeEstoque,
     content: (
       <StepContent title="🖨️ Registrar Produção">
-        Sempre que terminar uma impressão, toque em <strong>Produzir</strong>. O sistema vai <strong>abater automaticamente o filamento</strong> dos rolos cadastrados e adicionar a peça ao estoque. Um toast confirmará o desconto.
-        {mobile && <span className="block mt-1 text-indigo-500 text-xs">💡 Deslize o card para a esquerda para acessar os botões de ação.</span>}
+        Sempre que terminar uma impressão, toque em <strong>Produzir</strong>. O sistema vai <strong>abater automaticamente o filamento</strong> dos rolos cadastrados e adicionar a peça ao estoque.
+        {mobile && (
+          <span className="block mt-1 text-indigo-500 text-xs">
+            💡 Deslize o card para a esquerda para acessar os botões de ação.
+          </span>
+        )}
       </StepContent>
     ),
   },
 
   // ── 5 — Taxa de Falha ──────────────────────────────────────────────────────
-  // Mobile: target body/center (taxa-falha fica dentro de SwipeableCard)
+  // mobile: body/center — taxa-falha está dentro do mesmo SwipeableCard
   {
     target: mobile ? 'body' : '[data-tour="taxa-falha"]',
     placement: (mobile ? 'center' : 'top') as Step['placement'],
     skipBeacon: true,
+    before: beforeTaxaFalha,
     content: (
       <StepContent
         title="💀 Taxa de Falha Real"
         note="Amarelo ≥ 5%  ·  Vermelho ≥ 15%"
       >
-        O sistema <strong>aprende com seus erros</strong>. Cada impressão que falhar, registre com o botão Falha. O filamento é descontado mas a peça não entra no estoque. A taxa serve para ajustar sua margem de segurança.
+        O sistema <strong>aprende com seus erros</strong>. Cada impressão que falhar, registre com o botão Falha. O filamento é descontado mas a peça não entra no estoque. A taxa ajusta sua margem de segurança.
       </StepContent>
     ),
   },
 
   // ── 6 — Tab Materiais ──────────────────────────────────────────────────────
+  // tab-materiais está sempre no BottomTabBar — sem before hook necessário
   {
     target: '[data-tour="tab-materiais"]',
     placement: 'auto' as const,
@@ -156,17 +185,19 @@ function buildTourSteps(): Step[] {
     offset: 12,
     content: (
       <StepContent title="🧵 Controle de Materiais">
-        Aqui ficam seus filamentos, acessórios e peças de hardware. O sistema monitora o estoque e manda alertas no sininho 🔔 quando algo estiver acabando — antes de você ser pego de surpresa.
+        Aqui ficam seus filamentos, acessórios e peças de hardware. O sistema monitora o estoque e manda alertas no sininho 🔔 quando algo estiver acabando.
       </StepContent>
     ),
   },
 
   // ── 7 — Barra de peso do filamento ─────────────────────────────────────────
-  // Mobile: target body/center (filamento-barra fica dentro de card com overflow)
+  // before: navega para materiais e aguarda o elemento (desktop) / delay (mobile)
+  // mobile: body/center — filamento-barra está dentro de card com overflow
   {
     target: mobile ? 'body' : '[data-tour="filamento-barra"]',
     placement: (mobile ? 'center' : 'top') as Step['placement'],
     skipBeacon: true,
+    before: beforeMateriais,
     content: (
       <StepContent
         title="📊 Barra de Peso do Filamento"
@@ -206,6 +237,8 @@ const JOYRIDE_OPTIONS = {
   overlayColor: 'rgba(0,0,0,0.55)',
   zIndex: 10000,
   showProgress: true,
+  // Exibe loader apenas se o before hook demorar mais de 800ms
+  loaderDelay: 800,
   buttons: ['back', 'skip', 'primary'] as ('back' | 'close' | 'primary' | 'skip')[],
 };
 
@@ -214,7 +247,7 @@ const JOYRIDE_STYLES = {
     borderRadius: 16,
     padding: '20px 22px',
     boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
-    maxWidth: isMobileViewport() ? 290 : 340,
+    maxWidth: typeof window !== 'undefined' && window.innerWidth < 640 ? 290 : 340,
   } as React.CSSProperties,
   buttonPrimary: {
     backgroundColor: '#4F46E5',
@@ -255,21 +288,15 @@ const TourContext = createContext<TourContextType | null>(null);
 export function TourProvider({ children }: { children: React.ReactNode }) {
   const [run, setRun] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
-  // Steps são construídos ao iniciar o tour para capturar o viewport correto
   const [tourSteps, setTourSteps] = useState<Step[]>([]);
 
-  // Lê o localStorage apenas via inicializador de useState (seguro no cliente)
   const [tourCompleted, setTourCompleted] = useState<boolean>(
     () => localStorage.getItem(TOUR_KEY) === 'true'
   );
 
-  // Garante que o Joyride só é inserido no DOM após a montagem completa.
   const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
-  // Referência para a função de navegação de aba (injetada pelo App)
   const navigateRef = useRef<((tab: AppTab) => void) | null>(null);
 
   const registerNavigate = useCallback((fn: (tab: AppTab) => void) => {
@@ -277,8 +304,9 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const startTour = useCallback(() => {
-    // Constrói os steps agora — detecta o viewport atual (mobile vs desktop)
-    setTourSteps(buildTourSteps());
+    // Detecta o viewport e captura navigate no momento em que o tour começa
+    const steps = buildTourSteps(navigateRef.current, isMobileViewport());
+    setTourSteps(steps);
     setStepIndex(0);
     setRun(true);
   }, []);
@@ -289,47 +317,28 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     setRun(false);
   }, []);
 
-  // eslint-disable-next-line @typescript-eslint/no-misused-promises
-  const handleEvent = useCallback(async (data: EventData) => {
-    const { status, action, type, index } = data;
+  // Handler SÍNCRONO — Joyride v3 espera void, não Promise<void>.
+  // A navegação assíncrona entre abas é feita pelo `before` hook de cada step.
+  const handleEvent = useCallback((_data: EventData, _controls: Controls) => {
+    const { status, action, type, index } = _data;
 
     if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
       finishTour();
       return;
     }
 
-    if (type === 'step:after') {
+    if (type === EVENTS.STEP_AFTER) {
       if (action === 'close' || action === 'skip') {
         finishTour();
         return;
       }
-
-      const nextIndex =
-        action === 'next' ? index + 1 : Math.max(0, index - 1);
-
-      // ── Navegar para a aba correta antes de avançar o step ──────────────────
-      const stepNav = STEP_TAB[nextIndex];
-      if (stepNav && navigateRef.current) {
-        navigateRef.current(stepNav.tab);
-
-        // No mobile, steps 4/5/7 usam target:body — não precisamos (nem podemos)
-        // esperar pelo elemento do card; basta aguardar a aba renderizar.
-        const isMobileBodyStep = isMobileViewport() && MOBILE_BODY_STEPS.has(nextIndex);
-        if (!isMobileBodyStep) {
-          // Desktop: aguarda o elemento alvo aparecer no DOM
-          await waitForElement(stepNav.selector);
-        }
-        // Pequena pausa para o layout estabilizar antes do Joyride reposicionar
-        await new Promise<void>((r) => setTimeout(r, 80));
-      }
-
+      const nextIndex = action === 'next' ? index + 1 : Math.max(0, index - 1);
       setStepIndex(nextIndex);
     }
   }, [finishTour]);
 
   return (
     <TourContext.Provider value={{ startTour, tourCompleted, registerNavigate }}>
-      {/* Joyride só monta após o primeiro render completo (evita congelamento) */}
       {mounted && tourSteps.length > 0 && (
         <Joyride
           steps={tourSteps}
