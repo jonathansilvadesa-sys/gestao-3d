@@ -116,7 +116,7 @@ export function EstoqueTab({ products, onProduzir, onVender, onAjustar, onFalha 
       {/* ── KPI cards ─────────────────────────────────────────────────────── */}
       <div
         data-tour={products.length === 0 ? 'taxa-falha' : undefined}
-        className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
       >
         <StatCard label="Em estoque"      value={`${totalItens} un.`}   color="indigo" />
         <StatCard label="Total vendido"   value={`${totalVendido} un.`} color="emerald" />

@@ -198,21 +198,25 @@ export function SettingsModal({ onClose }: Props) {
   const marcas = [...new Set(allPrinters.map((p) => p.marca))];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center"
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       style={{ background: 'rgba(0,0,0,0.55)' }} onClick={onClose}>
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-y-auto"
+      <div className="bg-white dark:bg-gray-800 w-full sm:max-w-lg sm:mx-4 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden"
         style={{ maxHeight: '92vh' }} onClick={(e) => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-slate-700 to-slate-900 rounded-t-3xl p-6 text-white flex justify-between items-center">
+        <div className="bg-gradient-to-r from-slate-700 to-slate-900 rounded-t-3xl p-5 text-white flex justify-between items-start flex-shrink-0">
           <div>
             <h2 className="text-xl font-bold">⚙️ Configurações Globais</h2>
             <p className="text-sm opacity-70 mt-0.5">Padrões usados em todas as novas peças</p>
           </div>
-          <button onClick={onClose} className="text-3xl font-light opacity-70 hover:opacity-100">×</button>
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-xl font-bold transition flex-shrink-0"
+          >×</button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-5 sm:p-6 space-y-6 overflow-y-auto flex-1">
 
           {/* ── PERFIS DE IMPRESSORA ──────────────────────────────────────────── */}
           <div>
@@ -404,7 +408,7 @@ export function SettingsModal({ onClose }: Props) {
           {/* ── ENERGIA ──────────────────────────────────────────────────────── */}
           <div>
             <p className="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-3">⚡ Energia</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Custo kWh" k="custoKwh" unit="R$" />
               <Field label="Potência padrão" k="potenciaW" unit="W" />
             </div>
@@ -413,7 +417,7 @@ export function SettingsModal({ onClose }: Props) {
           {/* ── AMORTIZAÇÃO ──────────────────────────────────────────────────── */}
           <div>
             <p className="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-3">📉 Amortização da Impressora</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Valor da máquina" k="amortizacaoValor" unit="R$" />
               <Field label="Vida útil" k="amortizacaoHoras" unit="h" />
             </div>
@@ -458,7 +462,7 @@ export function SettingsModal({ onClose }: Props) {
           {/* ── IMPOSTOS E TAXAS ─────────────────────────────────────────────── */}
           <div>
             <p className="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-3">💸 Impostos e Taxas</p>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Field label="Imposto" k="imposto" unit="%" />
               <Field label="Taxa cartão" k="txCartao" unit="%" />
               <Field label="Anúncio padrão" k="custoAnuncio" unit="%" />
@@ -471,7 +475,7 @@ export function SettingsModal({ onClose }: Props) {
             <p className="text-xs text-gray-400 -mt-1 mb-3">
               Rateio por absorção: o custo fixo é dividido pelas horas disponíveis e alocado proporcionalmente ao tempo de impressão de cada peça.
             </p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Custo fixo/mês" k="custoFixoMes" unit="R$" />
               <Field label="Horas disponíveis/mês" k="horasDisponiveisMes" unit="h" />
             </div>
@@ -621,14 +625,14 @@ export function SettingsModal({ onClose }: Props) {
               Exporte todos os seus dados (peças, materiais, estoque, configurações) como um arquivo JSON.
               Use para migrar entre dispositivos ou fazer backup antes de alterações.
             </p>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
                 onClick={exportSystemBackup}
-                className="flex-1 flex items-center justify-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 font-semibold text-sm py-2.5 rounded-xl hover:bg-indigo-100 transition">
+                className="flex-1 flex items-center justify-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 font-semibold text-sm py-3 rounded-xl hover:bg-indigo-100 transition">
                 ⬇️ Exportar Backup (.json)
               </button>
-              <label className="flex-1 flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm py-2.5 rounded-xl hover:bg-slate-100 transition cursor-pointer">
+              <label className="flex-1 flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm py-3 rounded-xl hover:bg-slate-100 transition cursor-pointer">
                 ⬆️ Importar Backup
                 <input
                   ref={fileInputRef}
@@ -646,13 +650,13 @@ export function SettingsModal({ onClose }: Props) {
             <strong>Atenção:</strong> configurações salvas localmente. Alterações nos canais refletem imediatamente nos cálculos e na tabela multicanal.
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col-reverse sm:flex-row gap-3">
             <button onClick={onClose}
-              className="flex-1 border border-gray-200 text-gray-500 font-semibold py-3 rounded-2xl hover:bg-gray-50 transition">
+              className="flex-1 border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-300 font-semibold py-3.5 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700 transition">
               Cancelar
             </button>
             <button onClick={handleSave}
-              className="flex-1 bg-gradient-to-r from-slate-700 to-slate-900 text-white font-bold py-3 rounded-2xl hover:opacity-90 transition">
+              className="flex-1 bg-gradient-to-r from-slate-700 to-slate-900 text-white font-bold py-3.5 rounded-2xl hover:opacity-90 transition">
               Salvar configurações
             </button>
           </div>
