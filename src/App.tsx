@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { useAuth }           from '@/contexts/AuthContext';
 import { useProducts }       from '@/contexts/ProductContext';
 import { useSettings }       from '@/contexts/SettingsContext';
@@ -12,13 +12,17 @@ import { Dashboard }         from '@/components/dashboard/Dashboard';
 import { ProductsTab }       from '@/components/products/ProductsTab';
 import { EstoqueTab }        from '@/components/estoque/EstoqueTab';
 import { MateriaisTab }      from '@/components/materiais/MateriaisTab';
-import { ProductModal }      from '@/components/products/ProductModal';
-import { EditProductModal }  from '@/components/products/EditProductModal';
-import { NovaModal }           from '@/components/products/NovaModal';
 import { FloatingHelpButton }  from '@/components/shared/FloatingHelpButton';
 import { BottomTabBar }         from '@/components/layout/BottomTabBar';
 import { QuickActionFAB }       from '@/components/shared/QuickActionFAB';
+import { GlobalSearch }         from '@/components/shared/GlobalSearch';
+import { SkeletonDashboard }    from '@/components/shared/Skeleton';
 import type { AppTab, Product, EstoqueMovimento } from '@/types';
+
+// ── Lazy loading — modais só carregam quando abertos ─────────────────────────
+const ProductModal     = lazy(() => import('@/components/products/ProductModal').then((m) => ({ default: m.ProductModal })));
+const EditProductModal = lazy(() => import('@/components/products/EditProductModal').then((m) => ({ default: m.EditProductModal })));
+const NovaModal        = lazy(() => import('@/components/products/NovaModal').then((m) => ({ default: m.NovaModal })));
 
 
 export default function App() {
@@ -34,6 +38,26 @@ export default function App() {
   const [selected, setSelected]         = useState<Product | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showNova, setShowNova]         = useState(false);
+  const [showSearch, setShowSearch]     = useState(false);
+  const [appReady, setAppReady]         = useState(false);
+
+  // ── Primeiro render: mostrar skeleton por 1 ciclo de RAF ──────────────────
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setAppReady(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // ── Atalho Cmd/Ctrl+K para abrir busca global ─────────────────────────────
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowSearch((v) => !v);
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
   const totalEstoque = products.reduce((a, p) => a + (p.estoque ?? 0), 0);
 
@@ -69,18 +93,25 @@ export default function App() {
         setTab={setTab}
         totalEstoque={totalEstoque}
         onNovaPeca={() => setShowNova(true)}
+        onSearch={() => setShowSearch(true)}
         breakEvenCount={breakEvenCount}
       />
 
-      {/* pb-20 no mobile: espaço para a BottomTabBar (sm:pb-6 restaura o padrão no desktop) */}
+      {/* pb-24 no mobile: espaço para a BottomTabBar */}
       <main className="max-w-5xl mx-auto px-4 py-6 pb-24 sm:pb-6 space-y-6">
-        {tab === 'dashboard' && (
-          <Dashboard
-            products={products}
-            onSelect={setSelected}
-            onEdit={setEditingProduct}
-          />
-        )}
+        {/* Skeleton durante o primeiro render */}
+        {!appReady && <SkeletonDashboard />}
+
+        {/* Conteúdo real — key no tab dispara a animação de entrada */}
+        {appReady && (
+          <div key={tab} className="tab-enter space-y-6">
+            {tab === 'dashboard' && (
+              <Dashboard
+                products={products}
+                onSelect={setSelected}
+                onEdit={setEditingProduct}
+              />
+            )}
         {tab === 'produtos' && (
           <ProductsTab
             products={products}
@@ -89,9 +120,9 @@ export default function App() {
             onRemove={removeProduct}
           />
         )}
-        {tab === 'materiais' && <MateriaisTab />}
-        {tab === 'estoque' && (
-          <EstoqueTab
+            {tab === 'materiais' && <MateriaisTab />}
+            {tab === 'estoque' && (
+              <EstoqueTab
             products={products}
 
             // ── Produção: soma ao estoque + deduz filamentos ──────────────────
@@ -253,22 +284,38 @@ export default function App() {
                 movimentosEstoque: [mov, ...(product.movimentosEstoque ?? [])].slice(0, 50),
               });
             }}
-          />
+            />
+          )}
+          </div>
         )}
       </main>
 
-      {selected && (
-        <ProductModal product={selected} onClose={() => setSelected(null)} />
-      )}
-      {editingProduct && (
-        <EditProductModal
-          product={editingProduct}
-          onClose={() => setEditingProduct(null)}
-          onSave={(id, updates) => { updateProduct(id, updates); setEditingProduct(null); }}
+      {/* ── Modais lazy ──────────────────────────────────────────────────── */}
+      <Suspense fallback={null}>
+        {selected && (
+          <ProductModal product={selected} onClose={() => setSelected(null)} />
+        )}
+        {editingProduct && (
+          <EditProductModal
+            product={editingProduct}
+            onClose={() => setEditingProduct(null)}
+            onSave={(id, updates) => { updateProduct(id, updates); setEditingProduct(null); }}
+          />
+        )}
+        {showNova && (
+          <NovaModal onClose={() => setShowNova(false)} onAdd={addProduct} />
+        )}
+      </Suspense>
+
+      {/* ── Busca global ─────────────────────────────────────────────────── */}
+      {showSearch && (
+        <GlobalSearch
+          products={products}
+          materials={materials}
+          onNavigate={(t) => setTab(t)}
+          onSelectProduct={(p) => { setSelected(p); }}
+          onClose={() => setShowSearch(false)}
         />
-      )}
-      {showNova && (
-        <NovaModal onClose={() => setShowNova(false)} onAdd={addProduct} />
       )}
 
       {/* Botão flutuante (?) — no mobile sobe para não sobrepor a BottomTabBar */}

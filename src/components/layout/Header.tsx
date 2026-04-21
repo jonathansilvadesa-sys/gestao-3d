@@ -12,6 +12,7 @@ interface HeaderProps {
   setTab: (t: AppTab) => void;
   totalEstoque: number;
   onNovaPeca: () => void;
+  onSearch?: () => void;
   breakEvenCount?: number;
 }
 
@@ -22,7 +23,7 @@ const TABS: { key: AppTab; label: string; icon: string }[] = [
   { key: 'estoque',   label: 'Estoque',   icon: '📦' },
 ];
 
-export function Header({ tab, setTab, totalEstoque, onNovaPeca, breakEvenCount = 0 }: HeaderProps) {
+export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakEvenCount = 0 }: HeaderProps) {
   const { user, logout }       = useAuth();
   const { getAbaixoMinimo }    = useAcessorios();
   const { materials }          = useMaterials();
@@ -112,6 +113,20 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, breakEvenCount =
 
           {/* Ações à direita */}
           <div className="flex items-center gap-1.5 sm:gap-2">
+
+            {/* ── Busca Global — visível em todas as telas ─────────────── */}
+            {onSearch && (
+              <button
+                onClick={onSearch}
+                title="Busca global (Ctrl+K)"
+                className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center transition text-gray-500 dark:text-gray-300"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+              </button>
+            )}
 
             {/* ── Botão Tema — oculto no mobile ────────────────────────── */}
             <button

@@ -20,6 +20,21 @@
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* ── Tab transition ───────────────────────────────────────────── */
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.tab-enter {
+  animation: tabFadeIn 0.22s ease-out both;
+}
+
+/* ── Global search backdrop blur ──────────────────────────────── */
+.search-backdrop {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
 /* ── Joyride custom beacon ────────────────────────────────────── */
 .__floater__arrow polygon { fill: #1e1b4b; }
 .__floater__body { border-radius: 16px !important; }
