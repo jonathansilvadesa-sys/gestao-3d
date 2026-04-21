@@ -30,6 +30,10 @@ const STEP_TAB: Record<number, { tab: AppTab; selector: string }> = {
   7: { tab: 'materiais', selector: '[data-tour="filamento-barra"]' },
 };
 
+// Steps que, no mobile, usam target body/center (elementos dentro de cards
+// com overflow-hidden podem estar fora do viewport ou não-posicionáveis)
+const MOBILE_BODY_STEPS = new Set([4, 5, 7]);
+
 // ─── Helper: conteúdo de cada step ────────────────────────────────────────────
 function StepContent({ title, children, note }: {
   title: string;
@@ -51,9 +55,13 @@ function isMobileViewport(): boolean {
 }
 
 // ─── Steps do tour ────────────────────────────────────────────────────────────
-// Algumas posições mudam no mobile: tabs ficam no fundo (BottomTabBar) → 'top'
-// e elements ocultos no mobile usam fallback para 'center'
-const TOUR_STEPS: Step[] = [
+// Função chamada no início do tour (não na inicialização do módulo), para que
+// isMobileViewport() leia o tamanho real da tela naquele momento.
+// Steps 4, 5 e 7 apontam para elementos dentro de SwipeableCard/overflow-hidden;
+// no mobile usam target body + placement center para evitar congelamento.
+function buildTourSteps(): Step[] {
+  const mobile = isMobileViewport();
+  return [
   // ── 0 — Bem-vindo ──────────────────────────────────────────────────────────
   {
     target: 'body',
@@ -105,27 +113,30 @@ const TOUR_STEPS: Step[] = [
     content: (
       <StepContent title="📦 Aba de Estoque">
         Aqui ficam os controles de movimentação. Cada produto tem 4 ações: <strong>Produzir</strong>, <strong>Vender</strong>, <strong>Falha</strong> e <strong>Ajuste manual</strong> — cada um com seus próprios efeitos nos insumos.
-        {isMobileViewport() && <span className="block mt-1 text-indigo-500 text-xs">💡 No celular, deslize um card para a esquerda para ação rápida.</span>}
+        {mobile && <span className="block mt-1 text-indigo-500 text-xs">💡 No celular, deslize um card para a esquerda para ação rápida.</span>}
       </StepContent>
     ),
   },
 
   // ── 4 — Botão Produzir ─────────────────────────────────────────────────────
+  // Mobile: target body/center (btn-produzir fica dentro de SwipeableCard overflow-hidden)
   {
-    target: '[data-tour="btn-produzir"]',
-    placement: 'left',
+    target: mobile ? 'body' : '[data-tour="btn-produzir"]',
+    placement: (mobile ? 'center' : 'left') as Step['placement'],
     skipBeacon: true,
     content: (
       <StepContent title="🖨️ Registrar Produção">
-        Sempre que terminar uma impressão, clique aqui. O sistema vai <strong>abater automaticamente o filamento</strong> dos rolos cadastrados e adicionar a peça ao estoque. Um toast confirmará o desconto.
+        Sempre que terminar uma impressão, toque em <strong>Produzir</strong>. O sistema vai <strong>abater automaticamente o filamento</strong> dos rolos cadastrados e adicionar a peça ao estoque. Um toast confirmará o desconto.
+        {mobile && <span className="block mt-1 text-indigo-500 text-xs">💡 Deslize o card para a esquerda para acessar os botões de ação.</span>}
       </StepContent>
     ),
   },
 
   // ── 5 — Taxa de Falha ──────────────────────────────────────────────────────
+  // Mobile: target body/center (taxa-falha fica dentro de SwipeableCard)
   {
-    target: '[data-tour="taxa-falha"]',
-    placement: 'top',
+    target: mobile ? 'body' : '[data-tour="taxa-falha"]',
+    placement: (mobile ? 'center' : 'top') as Step['placement'],
     skipBeacon: true,
     content: (
       <StepContent
@@ -151,9 +162,10 @@ const TOUR_STEPS: Step[] = [
   },
 
   // ── 7 — Barra de peso do filamento ─────────────────────────────────────────
+  // Mobile: target body/center (filamento-barra fica dentro de card com overflow)
   {
-    target: '[data-tour="filamento-barra"]',
-    placement: 'top',
+    target: mobile ? 'body' : '[data-tour="filamento-barra"]',
+    placement: (mobile ? 'center' : 'top') as Step['placement'],
     skipBeacon: true,
     content: (
       <StepContent
@@ -184,7 +196,8 @@ const TOUR_STEPS: Step[] = [
       </div>
     ),
   },
-];
+  ];
+}
 
 // ─── Opções do Joyride v3 ─────────────────────────────────────────────────────
 const JOYRIDE_OPTIONS = {
@@ -242,6 +255,8 @@ const TourContext = createContext<TourContextType | null>(null);
 export function TourProvider({ children }: { children: React.ReactNode }) {
   const [run, setRun] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+  // Steps são construídos ao iniciar o tour para capturar o viewport correto
+  const [tourSteps, setTourSteps] = useState<Step[]>([]);
 
   // Lê o localStorage apenas via inicializador de useState (seguro no cliente)
   const [tourCompleted, setTourCompleted] = useState<boolean>(
@@ -249,8 +264,6 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   );
 
   // Garante que o Joyride só é inserido no DOM após a montagem completa.
-  // Isso evita que o Joyride tente localizar elementos data-tour antes da
-  // página estabilizar (causa do congelamento no Vercel com localStorage vazio).
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -264,6 +277,8 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const startTour = useCallback(() => {
+    // Constrói os steps agora — detecta o viewport atual (mobile vs desktop)
+    setTourSteps(buildTourSteps());
     setStepIndex(0);
     setRun(true);
   }, []);
@@ -296,10 +311,15 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
       const stepNav = STEP_TAB[nextIndex];
       if (stepNav && navigateRef.current) {
         navigateRef.current(stepNav.tab);
-        // Aguarda o elemento alvo aparecer no DOM (renderizado pelo React)
-        await waitForElement(stepNav.selector);
-        // Pequena pausa extra para o layout estabilizar antes do Joyride
-        // reposicionar o tooltip sobre o elemento
+
+        // No mobile, steps 4/5/7 usam target:body — não precisamos (nem podemos)
+        // esperar pelo elemento do card; basta aguardar a aba renderizar.
+        const isMobileBodyStep = isMobileViewport() && MOBILE_BODY_STEPS.has(nextIndex);
+        if (!isMobileBodyStep) {
+          // Desktop: aguarda o elemento alvo aparecer no DOM
+          await waitForElement(stepNav.selector);
+        }
+        // Pequena pausa para o layout estabilizar antes do Joyride reposicionar
         await new Promise<void>((r) => setTimeout(r, 80));
       }
 
@@ -310,9 +330,9 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   return (
     <TourContext.Provider value={{ startTour, tourCompleted, registerNavigate }}>
       {/* Joyride só monta após o primeiro render completo (evita congelamento) */}
-      {mounted && (
+      {mounted && tourSteps.length > 0 && (
         <Joyride
-          steps={TOUR_STEPS}
+          steps={tourSteps}
           run={run}
           stepIndex={stepIndex}
           continuous
