@@ -17,6 +17,8 @@ import { BottomTabBar }         from '@/components/layout/BottomTabBar';
 import { QuickActionFAB }       from '@/components/shared/QuickActionFAB';
 import { GlobalSearch }         from '@/components/shared/GlobalSearch';
 import { SkeletonDashboard }    from '@/components/shared/Skeleton';
+import { OfflineBanner }        from '@/components/shared/OfflineBanner';
+import { pedirPermissaoNotificacao, notificarEstoqueZerado } from '@/utils/notifications';
 import type { AppTab, Product, EstoqueMovimento } from '@/types';
 
 // ── Lazy loading — modais só carregam quando abertos ─────────────────────────
@@ -59,6 +61,15 @@ export default function App() {
     return () => document.removeEventListener('keydown', onKey);
   }, []);
 
+  // ── Pedir permissão de notificação após autenticação ──────────────────────
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Pequeno delay para não sobrepor o onboarding tour
+      const t = setTimeout(() => pedirPermissaoNotificacao(), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [isAuthenticated]);
+
   const totalEstoque = products.reduce((a, p) => a + (p.estoque ?? 0), 0);
 
   // Injeta a função de navegação de aba no TourContext (uma vez na montagem)
@@ -88,6 +99,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
+      {/* Banner de modo offline */}
+      <OfflineBanner />
+
       <Header
         tab={tab}
         setTab={setTab}
@@ -202,11 +216,16 @@ export default function App() {
                 data: new Date().toISOString(),
                 motivo: `Venda de ${vendendo} un.`,
               };
+              const novoEstoque = (product.estoque ?? 0) - vendendo;
               updateProduct(id, {
-                estoque: (product.estoque ?? 0) - vendendo,
+                estoque: novoEstoque,
                 totalVendido: (product.totalVendido ?? 0) + vendendo,
                 movimentosEstoque: [mov, ...(product.movimentosEstoque ?? [])].slice(0, 50),
               });
+              // Notificação PWA quando estoque zerar
+              if (novoEstoque <= 0) {
+                notificarEstoqueZerado(product.nome);
+              }
               // Toast de confirmação de venda
               const nomesAcc = product.acessorios
                 .filter((a) => a.catalogId && a.varianteId)

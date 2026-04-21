@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { StatCard } from '@/components/shared/StatCard';
 import { InfoTooltip } from '@/components/shared/Tooltip';
+import { SwipeableCard } from '@/components/shared/SwipeableCard';
 import { R, COLORS } from '@/utils/formatters';
 import type { Product } from '@/types';
 
@@ -160,7 +161,24 @@ export function EstoqueTab({ products, onProduzir, onVender, onAjustar, onFalha 
                                                `${estoque} un.`;
 
             return (
-              <div key={p.id} className="px-4 py-4 space-y-3">
+              <SwipeableCard
+                key={p.id}
+                actions={[
+                  {
+                    label: 'Vender',
+                    icon: '🏷️',
+                    color: 'bg-emerald-500',
+                    onAction: () => { if (estoque > 0) onVender(p.id, 1); },
+                  },
+                  {
+                    label: 'Produzir',
+                    icon: '🖨️',
+                    color: 'bg-indigo-500',
+                    onAction: () => onProduzir(p.id, 1),
+                  },
+                ]}
+              >
+              <div className="px-4 py-4 space-y-3">
 
                 {/* ── Cabeçalho do card: avatar + nome + status ─────────── */}
                 <div className="flex items-center gap-3">
@@ -429,6 +447,7 @@ export function EstoqueTab({ products, onProduzir, onVender, onAjustar, onFalha 
                   </div>
                 )}
               </div>
+              </SwipeableCard>
             );
           })}
         </div>

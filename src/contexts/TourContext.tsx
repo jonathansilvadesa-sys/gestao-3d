@@ -45,7 +45,14 @@ function StepContent({ title, children, note }: {
   );
 }
 
+// ─── Detecta mobile para ajustar posicionamento ───────────────────────────────
+function isMobileViewport(): boolean {
+  return typeof window !== 'undefined' && window.innerWidth < 640;
+}
+
 // ─── Steps do tour ────────────────────────────────────────────────────────────
+// Algumas posições mudam no mobile: tabs ficam no fundo (BottomTabBar) → 'top'
+// e elements ocultos no mobile usam fallback para 'center'
 const TOUR_STEPS: Step[] = [
   // ── 0 — Bem-vindo ──────────────────────────────────────────────────────────
   {
@@ -92,11 +99,13 @@ const TOUR_STEPS: Step[] = [
   // ── 3 — Tab Estoque ────────────────────────────────────────────────────────
   {
     target: '[data-tour="tab-estoque"]',
-    placement: 'bottom',
+    placement: 'auto' as const,
     skipBeacon: true,
+    offset: 12,
     content: (
       <StepContent title="📦 Aba de Estoque">
         Aqui ficam os controles de movimentação. Cada produto tem 4 ações: <strong>Produzir</strong>, <strong>Vender</strong>, <strong>Falha</strong> e <strong>Ajuste manual</strong> — cada um com seus próprios efeitos nos insumos.
+        {isMobileViewport() && <span className="block mt-1 text-indigo-500 text-xs">💡 No celular, deslize um card para a esquerda para ação rápida.</span>}
       </StepContent>
     ),
   },
@@ -131,8 +140,9 @@ const TOUR_STEPS: Step[] = [
   // ── 6 — Tab Materiais ──────────────────────────────────────────────────────
   {
     target: '[data-tour="tab-materiais"]',
-    placement: 'bottom',
+    placement: 'auto' as const,
     skipBeacon: true,
+    offset: 12,
     content: (
       <StepContent title="🧵 Controle de Materiais">
         Aqui ficam seus filamentos, acessórios e peças de hardware. O sistema monitora o estoque e manda alertas no sininho 🔔 quando algo estiver acabando — antes de você ser pego de surpresa.
@@ -191,7 +201,7 @@ const JOYRIDE_STYLES = {
     borderRadius: 16,
     padding: '20px 22px',
     boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
-    maxWidth: 340,
+    maxWidth: isMobileViewport() ? 290 : 340,
   } as React.CSSProperties,
   buttonPrimary: {
     backgroundColor: '#4F46E5',
