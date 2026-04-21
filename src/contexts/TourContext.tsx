@@ -6,11 +6,6 @@ import type { AppTab } from '@/types';
 // ─── Chave de controle ────────────────────────────────────────────────────────
 const TOUR_KEY = 'gestao3d_tourCompleted';
 
-// ─── Helper: detecta mobile ───────────────────────────────────────────────────
-function isMobile(): boolean {
-  return typeof window !== 'undefined' && window.innerWidth < 640;
-}
-
 // ─── Helper: conteúdo de cada step ────────────────────────────────────────────
 function StepContent({ title, children, note }: {
   title: string;
@@ -20,7 +15,7 @@ function StepContent({ title, children, note }: {
   return (
     <div className="space-y-2 py-1">
       <p className="font-bold text-gray-800 text-sm">{title}</p>
-      <p className="text-sm text-gray-500 leading-relaxed">{children}</p>
+      <div className="text-sm text-gray-500 leading-relaxed">{children}</div>
       {note && <p className="text-xs font-medium text-indigo-600 mt-1">{note}</p>}
     </div>
   );
@@ -28,45 +23,48 @@ function StepContent({ title, children, note }: {
 
 // ─── Construção dos steps ─────────────────────────────────────────────────────
 //
-// DECISÃO DE ARQUITETURA:
-// Steps 4, 5 e 7 usam target:'body' + placement:'center' em TODAS as telas.
-// Motivos:
-//  1. btn-produzir e taxa-falha ficam dentro de SwipeableCard overflow:hidden
-//     → spotlight do Joyride fica clipado mesmo no desktop
-//  2. taxa-falha só renderiza quando unidadesProduzidas > 0 (conditional render)
-//     → elemento pode não existir no DOM → TARGET_NOT_FOUND → tour trava
-//  3. filamento-barra pode estar fora do viewport na lista de materiais
+// DECISÃO DE ARQUITETURA — todos os steps usam target:'body' + placement:'center'
+// exceto steps 1 e 2 que apontam para cards do Dashboard (elementos estáveis).
 //
-// A navegação entre abas é feita pelos before hooks (Promise nativa do Joyride v3).
-// Sem waitForElement — apenas delay fixo para o React re-renderizar a aba.
+// Motivo: steps que apontavam para botões do BottomTabBar ou elementos dentro
+// de SwipeableCard (overflow:hidden) causavam TARGET_NOT_FOUND no mobile.
+// A solução foi remover esses steps e incluir a informação de localização
+// ("Na aba Estoque...") diretamente no texto de cada step.
 //
-function buildTourSteps(
-  navigate: ((tab: AppTab) => void) | null,
-  mobile: boolean,
-): Step[] {
+// Tour: 7 steps (0–6)
+//   0  Bem-vindo
+//   1  Capital Imobilizado     → aponta dashboard-patrimonio
+//   2  Break-even              → aponta dashboard-breakeven
+//   3  Aba Estoque             → body/center (antes navega para estoque)
+//   4  Taxa de Falha           → body/center (já em estoque)
+//   5  Aba Materiais           → body/center (antes navega para materiais)
+//   6  Fim
+//
+function buildTourSteps(navigate: ((tab: AppTab) => void) | null): Step[] {
 
   const delay = (ms: number): Promise<void> =>
     new Promise((r) => setTimeout(r, ms));
 
-  // Navega para dashboard (step 1 — garante tab correta mesmo que user esteja em outra aba)
+  // Navega para dashboard antes dos steps 1–2
   const beforeDashboard: BeforeHook = async () => {
     try { navigate?.('dashboard'); } catch { /* silent */ }
-    await delay(120);
+    await delay(150);
   };
 
-  // Navega para estoque (steps 4 e 5)
+  // Navega para estoque antes dos steps 3–4
   const beforeEstoque: BeforeHook = async () => {
     try { navigate?.('estoque'); } catch { /* silent */ }
     await delay(150);
   };
 
-  // Navega para materiais (step 7)
+  // Navega para materiais antes do step 5
   const beforeMateriais: BeforeHook = async () => {
     try { navigate?.('materiais'); } catch { /* silent */ }
     await delay(150);
   };
 
   return [
+
   // ── 0 — Bem-vindo ──────────────────────────────────────────────────────────
   {
     target: 'body',
@@ -78,7 +76,7 @@ function buildTourSteps(
         <h2 className="text-lg font-bold text-gray-800">Bem-vindo, Maker!</h2>
         <p className="text-sm text-gray-500 leading-relaxed">
           Vamos transformar seus <strong>G-codes em lucro real</strong>.<br />
-          Este guia rápido mostra as partes mais importantes do sistema.
+          Este guia mostra as partes essenciais do sistema.
         </p>
         <p className="text-xs text-indigo-500 font-medium">Leva menos de 1 minuto ⚡</p>
       </div>
@@ -86,7 +84,6 @@ function buildTourSteps(
   },
 
   // ── 1 — Dashboard: Capital Imobilizado ────────────────────────────────────
-  // before: garante que estamos no dashboard (usuário pode iniciar de outra aba)
   {
     target: '[data-tour="dashboard-patrimonio"]',
     placement: 'bottom',
@@ -94,7 +91,7 @@ function buildTourSteps(
     before: beforeDashboard,
     content: (
       <StepContent title="💰 Capital Imobilizado">
-        Aqui você vê o <strong>dinheiro real investido</strong> nas suas peças, avaliado pelo custo de produção — não pelo preço de venda. É o capital que saiu do seu bolso e ainda não voltou.
+        O <strong>dinheiro real investido</strong> nas suas peças, avaliado pelo custo de produção — não pelo preço de venda. É o capital que saiu do seu bolso e ainda não voltou.
       </StepContent>
     ),
   },
@@ -106,83 +103,57 @@ function buildTourSteps(
     skipBeacon: true,
     content: (
       <StepContent title="⚖️ Ponto de Equilíbrio (Break-even)">
-        Este indicador mostra <strong>quantas vendas ainda faltam</strong> para recuperar o investimento em cada produto. Enquanto estiver abaixo do break-even, o capital ainda está "parado" no estoque.
+        Mostra <strong>quantas vendas ainda faltam</strong> para recuperar o investimento em cada produto. Enquanto estiver abaixo do break-even, o capital ainda está "parado" no estoque.
       </StepContent>
     ),
   },
 
-  // ── 3 — Tab Estoque (sempre visível no BottomTabBar) ──────────────────────
-  {
-    target: '[data-tour="tab-estoque"]',
-    placement: 'auto' as const,
-    skipBeacon: true,
-    offset: 12,
-    content: (
-      <StepContent title="📦 Aba de Estoque">
-        Aqui ficam os controles de movimentação. Cada produto tem 4 ações: <strong>Produzir</strong>, <strong>Vender</strong>, <strong>Falha</strong> e <strong>Ajuste manual</strong>.
-        {mobile && (
-          <span className="block mt-1 text-indigo-500 text-xs">
-            💡 No celular, deslize um card para a esquerda para ação rápida.
-          </span>
-        )}
-      </StepContent>
-    ),
-  },
-
-  // ── 4 — Registrar Produção ─────────────────────────────────────────────────
-  // target:body — btn-produzir está dentro de SwipeableCard overflow:hidden
-  // before: navega para estoque + delay para re-render
+  // ── 3 — Aba Estoque: Produzir / Vender / Falha ────────────────────────────
+  // Antes navega para estoque. Texto explica onde encontrar os botões.
   {
     target: 'body',
     placement: 'center',
     skipBeacon: true,
     before: beforeEstoque,
     content: (
-      <StepContent title="🖨️ Registrar Produção">
-        Sempre que terminar uma impressão, toque em <strong>Produzir</strong>. O sistema vai <strong>abater automaticamente o filamento</strong> dos rolos cadastrados e adicionar a peça ao estoque.
-        {mobile && (
-          <span className="block mt-1 text-indigo-500 text-xs">
-            💡 Deslize o card para a esquerda para acesso rápido.
-          </span>
-        )}
+      <StepContent title="📦 Aba Estoque — Movimentações">
+        <p>
+          Na <strong>aba Estoque</strong>, cada produto tem 4 ações:
+        </p>
+        <ul className="mt-1 space-y-0.5 text-xs">
+          <li>🖨️ <strong>Produzir</strong> — adiciona ao estoque e desconta filamento automaticamente</li>
+          <li>🏷️ <strong>Vender</strong> — registra a saída e calcula o lucro</li>
+          <li>💀 <strong>Falha</strong> — desconta filamento sem adicionar ao estoque</li>
+          <li>✏️ <strong>Ajuste</strong> — correção manual sem gatilhos</li>
+        </ul>
+        <p className="mt-1 text-indigo-500 text-xs">💡 No celular, deslize o card para a esquerda para ação rápida.</p>
       </StepContent>
     ),
   },
 
-  // ── 5 — Taxa de Falha ──────────────────────────────────────────────────────
-  // target:body — taxa-falha só renderiza quando unidadesProduzidas > 0
-  // (render condicional → elemento pode não existir no DOM → TARGET_NOT_FOUND)
+  // ── 4 — Taxa de Falha ──────────────────────────────────────────────────────
+  // Ainda em estoque — texto explica onde ver a taxa.
   {
     target: 'body',
     placement: 'center',
     skipBeacon: true,
-    before: beforeEstoque,
     content: (
       <StepContent
         title="💀 Taxa de Falha Real"
         note="Amarelo ≥ 5%  ·  Vermelho ≥ 15%"
       >
-        O sistema <strong>aprende com seus erros</strong>. Cada impressão que falhar, registre com o botão Falha. O filamento é descontado mas a peça não entra no estoque. A taxa ajusta sua margem de segurança.
+        <p>
+          Ainda na <strong>aba Estoque</strong>, abaixo do nome de cada produto você verá a taxa de falha acumulada.
+        </p>
+        <p className="mt-1">
+          O sistema <strong>aprende com os erros</strong>: cada falha registrada desconta o filamento e ajusta automaticamente sua margem de segurança.
+        </p>
       </StepContent>
     ),
   },
 
-  // ── 6 — Tab Materiais (sempre visível no BottomTabBar) ────────────────────
-  {
-    target: '[data-tour="tab-materiais"]',
-    placement: 'auto' as const,
-    skipBeacon: true,
-    offset: 12,
-    content: (
-      <StepContent title="🧵 Controle de Materiais">
-        Aqui ficam seus filamentos, acessórios e peças de hardware. O sistema monitora o estoque e manda alertas no sininho 🔔 quando algo estiver acabando.
-      </StepContent>
-    ),
-  },
-
-  // ── 7 — Barra de peso do filamento ─────────────────────────────────────────
-  // target:body — filamento-barra pode estar fora do viewport na lista
-  // before: navega para materiais + delay para re-render
+  // ── 5 — Aba Materiais: Filamentos + Barra de Peso ─────────────────────────
+  // Antes navega para materiais. Texto explica onde encontrar e o que ver.
   {
     target: 'body',
     placement: 'center',
@@ -190,15 +161,20 @@ function buildTourSteps(
     before: beforeMateriais,
     content: (
       <StepContent
-        title="📊 Barra de Peso do Filamento"
+        title="🧵 Aba Materiais — Filamentos"
         note="Verde > 50%  ·  Amarelo > 20%  ·  Vermelho ≤ 20%"
       >
-        Monitore a <strong>saúde dos seus rolos</strong>. Quando a barra ficar vermelha, é hora de repor antes que você fique sem material no meio de uma impressão de 8 horas.
+        <p>
+          Na <strong>aba Materiais</strong>, cadastre seus rolos de filamento e acompanhe o peso restante de cada um pela barra colorida.
+        </p>
+        <p className="mt-1">
+          O sistema manda alertas no <strong>🔔 sininho</strong> quando o estoque estiver acabando — antes de você ser pego de surpresa no meio de uma impressão.
+        </p>
       </StepContent>
     ),
   },
 
-  // ── 8 — Fim ────────────────────────────────────────────────────────────────
+  // ── 6 — Fim ────────────────────────────────────────────────────────────────
   {
     target: 'body',
     placement: 'center',
@@ -217,6 +193,7 @@ function buildTourSteps(
       </div>
     ),
   },
+
   ];
 }
 
@@ -227,7 +204,6 @@ const JOYRIDE_OPTIONS = {
   overlayColor: 'rgba(0,0,0,0.55)',
   zIndex: 10000,
   showProgress: true,
-  // Não mostra loader para delays curtos (< 600ms)
   loaderDelay: 600,
   buttons: ['back', 'skip', 'primary'] as ('back' | 'close' | 'primary' | 'skip')[],
 };
@@ -237,7 +213,7 @@ const JOYRIDE_STYLES = {
     borderRadius: 16,
     padding: '20px 22px',
     boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
-    maxWidth: typeof window !== 'undefined' && window.innerWidth < 640 ? 290 : 340,
+    maxWidth: typeof window !== 'undefined' && window.innerWidth < 640 ? 290 : 360,
   } as React.CSSProperties,
   buttonPrimary: {
     backgroundColor: '#4F46E5',
@@ -294,8 +270,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const startTour = useCallback(() => {
-    const steps = buildTourSteps(navigateRef.current, isMobile());
-    setTourSteps(steps);
+    setTourSteps(buildTourSteps(navigateRef.current));
     setStepIndex(0);
     setRun(true);
   }, []);
@@ -306,21 +281,20 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     setRun(false);
   }, []);
 
-  // Handler SÍNCRONO (Joyride v3 espera void, não Promise<void>).
-  // A navegação assíncrona entre abas é feita pelos `before` hooks em cada step.
-  // TARGET_NOT_FOUND: avança o step automaticamente para não travar o tour.
+  // Handler SÍNCRONO — Joyride v3 espera (data, controls) => void, não async.
+  // Navegação assíncrona entre abas é feita pelos before hooks de cada step.
+  // TARGET_NOT_FOUND: avança automaticamente para não travar o tour.
   const handleEvent = useCallback((_data: EventData, _controls: Controls) => {
     const { status, action, type, index } = _data;
 
-    // Tour encerrado pelo usuário (concluiu ou pulou)
     if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
       finishTour();
       return;
     }
 
-    // Elemento alvo não encontrado → avança automaticamente
+    // Elemento não encontrado → avança para não travar
     if (type === EVENTS.TARGET_NOT_FOUND) {
-      setStepIndex((prev) => prev + 1);
+      setStepIndex(index + 1);
       return;
     }
 
