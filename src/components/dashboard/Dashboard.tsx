@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  LineChart, Line, ReferenceLine,
+  LineChart, Line, ReferenceLine, ComposedChart, Area,
 } from 'recharts';
 import { StatCard } from '@/components/shared/StatCard';
 import { Badge } from '@/components/shared/Badge';
 import { InfoTooltip } from '@/components/shared/Tooltip';
 import { R, margem, COLORS, truncate } from '@/utils/formatters';
 import { exportarRelatorioPDF, exportarRelatorioVendasMensais } from '@/utils/exportPdf';
+import { exportarExcel } from '@/utils/exportExcel';
 import { useSettings } from '@/contexts/SettingsContext';
 import { PrinterComparatorModal } from '@/components/printers/PrinterComparatorModal';
 import { HistoricoModal } from '@/components/historico/HistoricoModal';
@@ -29,9 +30,11 @@ function fmtMes(ym: string) {
 export function Dashboard({ products, onSelect, onEdit }: Props) {
   const [exporting, setExporting] = useState(false);
   const [exportingVendas, setExportingVendas] = useState(false);
+  const [exportingXlsx, setExportingXlsx] = useState(false);
   const [showComparator, setShowComparator] = useState(false);
   const [showHistorico, setShowHistorico] = useState(false);
   const [custoDetalhado, setCustoDetalhado] = useState<Product | null>(null);
+  const [chartTab, setChartTab] = useState<'atividade' | 'custoFat'>('atividade');
   const { settings, resetFaturamentoMes } = useSettings();
 
   const mesAtual = new Date().toISOString().slice(0, 7);
@@ -115,6 +118,47 @@ export function Dashboard({ products, onSelect, onEdit }: Props) {
     'Lucro Líq.': p.lucroLiquidoConsumidor,
   }));
 
+  // ── Atividade Mensal: Produção / Vendas / Falhas por mês ─────────────────
+  const atividadeMensalData = useMemo(() => {
+    const map: Record<string, { producao: number; vendas: number; falhas: number }> = {};
+    for (const p of products) {
+      for (const m of p.movimentosEstoque ?? []) {
+        const mes = m.data.slice(0, 7);
+        if (!map[mes]) map[mes] = { producao: 0, vendas: 0, falhas: 0 };
+        if (m.tipo === 'producao')   map[mes].producao += m.quantidade;
+        else if (m.tipo === 'venda') map[mes].vendas   += m.quantidade;
+        else if (m.tipo === 'falha') map[mes].falhas   += m.quantidade;
+      }
+    }
+    return Object.keys(map).sort().slice(-6).map((mes) => ({
+      mes: fmtMes(mes),
+      'Produção': map[mes].producao,
+      'Vendas':   map[mes].vendas,
+      'Falhas':   map[mes].falhas,
+    }));
+  }, [products]);
+
+  // ── Custo vs. Faturamento mensal ─────────────────────────────────────────
+  const custoVsFatData = useMemo(() => {
+    const map: Record<string, { custo: number; faturamento: number }> = {};
+    for (const p of products) {
+      for (const m of p.movimentosEstoque ?? []) {
+        const mes = m.data.slice(0, 7);
+        if (!map[mes]) map[mes] = { custo: 0, faturamento: 0 };
+        if (m.tipo === 'producao')   map[mes].custo        += m.quantidade * p.custoUn;
+        else if (m.tipo === 'venda') map[mes].faturamento  += m.quantidade * p.precoConsumidor;
+      }
+    }
+    return Object.keys(map).sort().slice(-6).map((mes) => ({
+      mes: fmtMes(mes),
+      'Custo':       +map[mes].custo.toFixed(2),
+      'Faturamento': +map[mes].faturamento.toFixed(2),
+      'Lucro':       +(map[mes].faturamento - map[mes].custo).toFixed(2),
+    }));
+  }, [products]);
+
+  const temDadosAvancados = atividadeMensalData.length > 0 || custoVsFatData.length > 0;
+
   const handleExport = async () => {
     setExporting(true);
     try { await exportarRelatorioPDF(products); }
@@ -125,6 +169,12 @@ export function Dashboard({ products, onSelect, onEdit }: Props) {
     setExportingVendas(true);
     try { await exportarRelatorioVendasMensais(products); }
     finally { setExportingVendas(false); }
+  };
+
+  const handleExportXlsx = () => {
+    setExportingXlsx(true);
+    try { exportarExcel(products); }
+    finally { setExportingXlsx(false); }
   };
 
   return (
@@ -159,6 +209,19 @@ export function Dashboard({ products, onSelect, onEdit }: Props) {
             )}
             <span className="hidden sm:inline">{exporting ? 'Gerando…' : 'PDF Produtos'}</span>
             <span className="sm:hidden">{exporting ? '…' : 'PDF'}</span>
+          </button>
+          <button
+            onClick={handleExportXlsx}
+            disabled={exportingXlsx || products.length === 0}
+            className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 text-sm font-semibold px-3 py-2 rounded-xl hover:bg-emerald-100 disabled:opacity-50 transition shadow-sm"
+          >
+            {exportingXlsx ? (
+              <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            ) : (
+              <span className="text-base leading-none">📊</span>
+            )}
+            <span className="hidden sm:inline">{exportingXlsx ? 'Gerando…' : 'Excel'}</span>
+            <span className="sm:hidden">.xlsx</span>
           </button>
         </div>
       </div>
@@ -263,6 +326,93 @@ export function Dashboard({ products, onSelect, onEdit }: Props) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* ── Gráficos Avançados ─────────────────────────────────────────────── */}
+      {temDadosAvancados && (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5">
+          {/* Header + Tab switcher */}
+          <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+            <h3 className="font-bold text-gray-700 dark:text-gray-200">
+              {chartTab === 'atividade' ? '📊 Atividade Mensal' : '💹 Custo vs. Faturamento'}
+            </h3>
+            <div className="flex bg-gray-100 dark:bg-gray-700 rounded-xl p-1 gap-1 text-xs font-semibold">
+              <button
+                onClick={() => setChartTab('atividade')}
+                className={`px-3 py-1.5 rounded-lg transition ${
+                  chartTab === 'atividade'
+                    ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                }`}
+              >
+                Atividade
+              </button>
+              <button
+                onClick={() => setChartTab('custoFat')}
+                className={`px-3 py-1.5 rounded-lg transition ${
+                  chartTab === 'custoFat'
+                    ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                }`}
+              >
+                Custo/Fat.
+              </button>
+            </div>
+          </div>
+
+          {/* Chart: Atividade Mensal */}
+          {chartTab === 'atividade' && (
+            <>
+              <p className="text-xs text-gray-400 mb-3">Unidades produzidas, vendidas e falhas nos últimos 6 meses</p>
+              {atividadeMensalData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={230}>
+                  <BarChart data={atividadeMensalData} barCategoryGap="25%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="Produção" fill="#6366f1" radius={[4,4,0,0]} />
+                    <Bar dataKey="Vendas"   fill="#10b981" radius={[4,4,0,0]} />
+                    <Bar dataKey="Falhas"   fill="#f87171" radius={[4,4,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-40 text-sm text-gray-400">
+                  Nenhuma movimentação registrada ainda.
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Chart: Custo vs. Faturamento */}
+          {chartTab === 'custoFat' && (
+            <>
+              <p className="text-xs text-gray-400 mb-3">Custo de produção × faturamento × lucro bruto dos últimos 6 meses</p>
+              {custoVsFatData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={230}>
+                  <ComposedChart data={custoVsFatData} barCategoryGap="30%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `R$${(v/1000).toFixed(1)}k`} width={54} />
+                    <Tooltip
+                      formatter={(v) => R(v as number)}
+                      contentStyle={{ borderRadius: 12, fontSize: 12 }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar      dataKey="Custo"       fill="#e0e7ff" radius={[4,4,0,0]} />
+                    <Bar      dataKey="Faturamento" fill="#6366f1" radius={[4,4,0,0]} />
+                    <Area     dataKey="Lucro"       fill="#d1fae5" stroke="#10b981" strokeWidth={2} type="monotone" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-40 text-sm text-gray-400">
+                  Nenhuma movimentação registrada ainda.
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 

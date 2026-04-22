@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { StatCard } from '@/components/shared/StatCard';
 import { InfoTooltip } from '@/components/shared/Tooltip';
 import { SwipeableCard } from '@/components/shared/SwipeableCard';
+import { EtiquetasModal } from '@/components/products/EtiquetasModal';
 import { R, COLORS } from '@/utils/formatters';
 import type { Product } from '@/types';
 
@@ -75,6 +76,7 @@ const IconAjuste = () => (
 // ─── Componente principal ─────────────────────────────────────────────────────
 export function EstoqueTab({ products, onProduzir, onVender, onAjustar, onFalha }: Props) {
   const [estados, setEstados] = useState<Record<number, Estado>>({});
+  const [etiquetaProduct, setEtiquetaProduct] = useState<Product | null>(null);
 
   const totalItens   = products.reduce((a, p) => a + (p.estoque ?? 0), 0);
   const totalVendido = products.reduce((a, p) => a + (p.totalVendido ?? 0), 0);
@@ -213,6 +215,15 @@ export function EstoqueTab({ products, onProduzir, onVender, onAjustar, onFalha 
                       );
                     })()}
                   </div>
+
+                  {/* Botão etiqueta */}
+                  <button
+                    onClick={() => setEtiquetaProduct(p)}
+                    title="Gerar etiqueta + QR Code"
+                    className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-gray-500 hover:text-indigo-600 transition text-sm"
+                  >
+                    🏷️
+                  </button>
 
                   {/* Badge de status — canto superior direito */}
                   <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${statusColor}`}>
@@ -470,6 +481,14 @@ export function EstoqueTab({ products, onProduzir, onVender, onAjustar, onFalha 
             </BarChart>
           </ResponsiveContainer>
         </div>
+      )}
+
+      {/* ── Modal de Etiqueta + QR Code ──────────────────────────────────── */}
+      {etiquetaProduct && (
+        <EtiquetasModal
+          product={etiquetaProduct}
+          onClose={() => setEtiquetaProduct(null)}
+        />
       )}
     </div>
   );
