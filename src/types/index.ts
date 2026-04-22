@@ -347,11 +347,49 @@ export interface User {
 
 export interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<string | null>; // null = ok, string = mensagem de erro
+  login: (email: string, password: string) => Promise<string | null>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<string | null>;
   isAuthenticated: boolean;
-  authLoading: boolean;  // true enquanto Supabase verifica sessão inicial
+  authLoading: boolean;
+}
+
+// ─── Multi-tenant ─────────────────────────────────────────────────────────────
+export type TenantRole = 'developer' | 'owner' | 'admin' | 'operador';
+
+export interface Tenant {
+  id: string;
+  nome: string;
+  slug: string;
+  plano: string;
+  ativo: boolean;
+  criadoEm: string;
+}
+
+export interface TenantMember {
+  id: string;
+  tenantId: string;
+  userId: string;
+  email?: string;
+  nome?: string;
+  role: TenantRole;
+  ativo: boolean;
+  criadoEm: string;
+}
+
+export interface TenantContextType {
+  tenant: Tenant | null;            // tenant ativo
+  myRole: TenantRole | null;        // role do usuário logado no tenant ativo
+  members: TenantMember[];          // membros do tenant ativo
+  allTenants: Tenant[];             // apenas para developer
+  tenantLoading: boolean;
+  needsTenantSetup: boolean;        // true quando user não tem tenant configurado
+  createTenant: (nome: string) => Promise<string | null>;
+  inviteMember: (email: string, role: TenantRole) => Promise<string | null>;
+  removeMember: (memberId: string) => Promise<void>;
+  updateMemberRole: (memberId: string, role: TenantRole) => Promise<void>;
+  switchTenant: (tenantId: string) => Promise<void>;
+  migrateExistingData: () => Promise<void>;
 }
 
 // ─── Tabs da aplicação ────────────────────────────────────────────────────────

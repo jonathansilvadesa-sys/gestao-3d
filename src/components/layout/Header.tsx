@@ -5,6 +5,7 @@ import { useMaterials }  from '@/contexts/MaterialContext';
 import { useTheme }      from '@/contexts/ThemeContext';
 import { useHardware }   from '@/contexts/HardwareContext';
 import { SettingsModal } from '@/components/settings/SettingsModal';
+import { DeveloperBadge } from '@/components/admin/DeveloperPanel';
 import type { AppTab } from '@/types';
 
 interface HeaderProps {
@@ -113,6 +114,9 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
 
           {/* Ações à direita */}
           <div className="flex items-center gap-1.5 sm:gap-2">
+
+            {/* ── Badge de Developer ────────────────────────────────────── */}
+            <DeveloperBadge />
 
             {/* ── Busca Global — visível em todas as telas ─────────────── */}
             {onSearch && (

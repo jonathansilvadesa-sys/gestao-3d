@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AuthProvider }      from '@/contexts/AuthContext';
+import { TenantProvider }    from '@/contexts/TenantContext';
 import { SettingsProvider }  from '@/contexts/SettingsContext';
 import { ProductProvider }   from '@/contexts/ProductContext';
 import { MaterialProvider }  from '@/contexts/MaterialContext';
@@ -17,23 +18,26 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
       <AuthProvider>
-        <SettingsProvider>
-          <CanaisProvider>
-            <ProductProvider>
-              <MaterialProvider>
-                <AcessorioProvider>
-                  <HardwareProvider>
-                    <ToastProvider>
-                      <TourProvider>
-                        <App />
-                      </TourProvider>
-                    </ToastProvider>
-                  </HardwareProvider>
-                </AcessorioProvider>
-              </MaterialProvider>
-            </ProductProvider>
-          </CanaisProvider>
-        </SettingsProvider>
+        {/* TenantProvider usa useAuth() internamente — fica dentro de AuthProvider */}
+        <TenantProvider>
+          <SettingsProvider>
+            <CanaisProvider>
+              <ProductProvider>
+                <MaterialProvider>
+                  <AcessorioProvider>
+                    <HardwareProvider>
+                      <ToastProvider>
+                        <TourProvider>
+                          <App />
+                        </TourProvider>
+                      </ToastProvider>
+                    </HardwareProvider>
+                  </AcessorioProvider>
+                </MaterialProvider>
+              </ProductProvider>
+            </CanaisProvider>
+          </SettingsProvider>
+        </TenantProvider>
       </AuthProvider>
     </ThemeProvider>
   </StrictMode>

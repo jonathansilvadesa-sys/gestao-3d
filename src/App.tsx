@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { useAuth }           from '@/contexts/AuthContext';
+import { useTenant }         from '@/contexts/TenantContext';
 import { useProducts }       from '@/contexts/ProductContext';
 import { useSettings }       from '@/contexts/SettingsContext';
 import { useAcessorios }     from '@/contexts/AcessorioContext';
@@ -7,6 +8,7 @@ import { useMaterials }      from '@/contexts/MaterialContext';
 import { useToast }          from '@/contexts/ToastContext';
 import { useTour }           from '@/contexts/TourContext';
 import { LoginPage }         from '@/components/auth/LoginPage';
+import { OnboardingTenant }  from '@/components/auth/OnboardingTenant';
 import { Header }            from '@/components/layout/Header';
 import { Dashboard }         from '@/components/dashboard/Dashboard';
 import { ProductsTab }       from '@/components/products/ProductsTab';
@@ -30,6 +32,7 @@ const ImportModal      = lazy(() => import('@/components/products/ImportModal').
 
 export default function App() {
   const { isAuthenticated, authLoading }                        = useAuth();
+  const { needsTenantSetup, tenantLoading }                     = useTenant();
   const { products, addProduct, updateProduct, removeProduct }  = useProducts();
   const { registrarVenda }                                      = useSettings();
   const { addMovimento }                                        = useAcessorios();
@@ -97,8 +100,8 @@ export default function App() {
     return (p.estoque ?? 0) < bk;
   }).length, [products]);
 
-  // Aguarda Supabase verificar sessão salva antes de decidir se mostra login
-  if (authLoading) return (
+  // Aguarda Supabase verificar sessão + tenant antes de decidir o que mostrar
+  if (authLoading || (isAuthenticated && tenantLoading)) return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
         <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-2xl shadow-lg animate-pulse">🖨</div>
@@ -108,6 +111,9 @@ export default function App() {
   );
 
   if (!isAuthenticated) return <LoginPage />;
+
+  // Usuário autenticado mas sem empresa configurada → onboarding
+  if (needsTenantSetup) return <OnboardingTenant />;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
