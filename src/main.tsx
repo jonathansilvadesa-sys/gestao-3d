@@ -9,6 +9,7 @@ import { CanaisProvider }    from '@/contexts/CanaisContext';
 import { AcessorioProvider } from '@/contexts/AcessorioContext';
 import { ThemeProvider }     from '@/contexts/ThemeContext';
 import { HardwareProvider }  from '@/contexts/HardwareContext';
+import { PedidosProvider }   from '@/contexts/PedidosContext';
 import { ToastProvider }     from '@/contexts/ToastContext';
 import { TourProvider }      from '@/contexts/TourContext';
 import './index.css';
@@ -26,11 +27,13 @@ createRoot(document.getElementById('root')!).render(
                 <MaterialProvider>
                   <AcessorioProvider>
                     <HardwareProvider>
-                      <ToastProvider>
-                        <TourProvider>
-                          <App />
-                        </TourProvider>
-                      </ToastProvider>
+                      <PedidosProvider>
+                        <ToastProvider>
+                          <TourProvider>
+                            <App />
+                          </TourProvider>
+                        </ToastProvider>
+                      </PedidosProvider>
                     </HardwareProvider>
                   </AcessorioProvider>
                 </MaterialProvider>

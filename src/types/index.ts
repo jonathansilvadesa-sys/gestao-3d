@@ -347,9 +347,10 @@ export interface User {
 
 export interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<string | null>;
-  logout: () => Promise<void>;
-  resetPassword: (email: string) => Promise<string | null>;
+  login:           (email: string, password: string) => Promise<string | null>;
+  loginWithGoogle: () => Promise<string | null>;
+  logout:          () => Promise<void>;
+  resetPassword:   (email: string) => Promise<string | null>;
   isAuthenticated: boolean;
   authLoading: boolean;
 }
@@ -393,4 +394,56 @@ export interface TenantContextType {
 }
 
 // ─── Tabs da aplicação ────────────────────────────────────────────────────────
-export type AppTab = 'dashboard' | 'produtos' | 'estoque' | 'materiais';
+export type AppTab = 'dashboard' | 'produtos' | 'estoque' | 'materiais' | 'pedidos';
+
+// ─── Pedidos ──────────────────────────────────────────────────────────────────
+export type PedidoStatus =
+  | 'orcamento'
+  | 'confirmado'
+  | 'em_producao'
+  | 'pronto'
+  | 'entregue'
+  | 'cancelado';
+
+export const PEDIDO_STATUS_INFO: Record<PedidoStatus, { label: string; cor: string; emoji: string }> = {
+  orcamento:    { label: 'Orçamento',    cor: 'bg-gray-100 text-gray-600',     emoji: '📋' },
+  confirmado:   { label: 'Confirmado',   cor: 'bg-blue-100 text-blue-700',     emoji: '✅' },
+  em_producao:  { label: 'Em produção',  cor: 'bg-amber-100 text-amber-700',   emoji: '🖨️' },
+  pronto:       { label: 'Pronto',       cor: 'bg-emerald-100 text-emerald-700',emoji: '📦' },
+  entregue:     { label: 'Entregue',     cor: 'bg-purple-100 text-purple-700', emoji: '🎉' },
+  cancelado:    { label: 'Cancelado',    cor: 'bg-red-100 text-red-600',       emoji: '❌' },
+};
+
+export interface PedidoItem {
+  productId: number;
+  nome: string;
+  quantidade: number;
+  precoUn: number;
+  subtotal: number;
+}
+
+export interface Pedido {
+  id: string;
+  numero: number;
+  clienteNome: string;
+  clienteContato?: string;   // email ou telefone
+  canal: string;             // id do CanalVenda
+  itens: PedidoItem[];
+  status: PedidoStatus;
+  valorTotal: number;
+  desconto: number;          // R$ de desconto
+  dataPedido: string;        // ISO
+  dataEntregaPrevista?: string;
+  dataEntregue?: string;
+  notas?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface PedidosContextType {
+  pedidos: Pedido[];
+  addPedido:    (p: Omit<Pedido, 'id' | 'numero' | 'criadoEm' | 'atualizadoEm'>) => void;
+  updatePedido: (id: string, updates: Partial<Pedido>) => void;
+  removePedido: (id: string) => void;
+  updateStatus: (id: string, status: PedidoStatus) => void;
+}

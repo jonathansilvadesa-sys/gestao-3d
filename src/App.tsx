@@ -14,6 +14,7 @@ import { Dashboard }         from '@/components/dashboard/Dashboard';
 import { ProductsTab }       from '@/components/products/ProductsTab';
 import { EstoqueTab }        from '@/components/estoque/EstoqueTab';
 import { MateriaisTab }      from '@/components/materiais/MateriaisTab';
+import { PedidosTab }        from '@/components/pedidos/PedidosTab';
 import { FloatingHelpButton }  from '@/components/shared/FloatingHelpButton';
 import { BottomTabBar }         from '@/components/layout/BottomTabBar';
 import { QuickActionFAB }       from '@/components/shared/QuickActionFAB';
@@ -154,6 +155,7 @@ export default function App() {
           />
         )}
             {tab === 'materiais' && <MateriaisTab />}
+            {tab === 'pedidos'   && <PedidosTab />}
             {tab === 'estoque' && (
               <EstoqueTab
             products={products}

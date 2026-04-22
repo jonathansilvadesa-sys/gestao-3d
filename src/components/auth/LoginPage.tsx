@@ -4,13 +4,22 @@ import { useAuth } from '@/contexts/AuthContext';
 type Mode = 'login' | 'reset';
 
 export function LoginPage() {
-  const { login, resetPassword } = useAuth();
+  const { login, loginWithGoogle, resetPassword } = useAuth();
   const [mode, setMode]         = useState<Mode>('login');
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
   const [success, setSuccess]   = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [loading, setLoading]       = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogle = async () => {
+    setGoogleLoading(true);
+    setError('');
+    const err = await loginWithGoogle();
+    if (err) { setError(err); setGoogleLoading(false); }
+    // sucesso → redireciona para Google, página sai daqui
+  };
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -50,6 +59,35 @@ export function LoginPage() {
           {mode === 'login' ? (
             <>
               <h2 className="text-xl font-bold text-gray-700">Entrar na conta</h2>
+
+              {/* ── Google OAuth ── */}
+              <button
+                type="button"
+                onClick={handleGoogle}
+                disabled={googleLoading || loading}
+                className="w-full flex items-center justify-center gap-3 border border-gray-200 rounded-2xl py-3 px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
+              >
+                {googleLoading ? (
+                  <svg className="animate-spin w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 48 48">
+                    <path fill="#4285F4" d="M47.53 24.56c0-1.61-.14-3.17-.41-4.67H24v8.84h13.2c-.57 3.02-2.3 5.58-4.9 7.3v6.07h7.93c4.64-4.27 7.3-10.56 7.3-17.54z"/>
+                    <path fill="#34A853" d="M24 48c6.63 0 12.19-2.2 16.26-5.97l-7.93-6.07c-2.2 1.48-5.02 2.35-8.33 2.35-6.41 0-11.84-4.33-13.78-10.15H2.01v6.26C6.07 42.88 14.44 48 24 48z"/>
+                    <path fill="#FBBC05" d="M10.22 28.16A14.86 14.86 0 0 1 9.44 24c0-1.44.25-2.83.78-4.16v-6.26H2.01A23.98 23.98 0 0 0 0 24c0 3.87.93 7.53 2.01 10.42l8.21-6.26z"/>
+                    <path fill="#EA4335" d="M24 9.5c3.61 0 6.85 1.24 9.39 3.68l7.04-7.04C36.18 2.19 30.62 0 24 0 14.44 0 6.07 5.12 2.01 13.58l8.21 6.26C12.16 13.83 17.59 9.5 24 9.5z"/>
+                  </svg>
+                )}
+                {googleLoading ? 'Redirecionando…' : 'Continuar com Google'}
+              </button>
+
+              {/* Separador */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 border-t border-gray-100" />
+                <span className="text-xs text-gray-300 font-semibold">ou</span>
+                <div className="flex-1 border-t border-gray-100" />
+              </div>
 
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>

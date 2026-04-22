@@ -53,11 +53,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string): Promise<string | null> => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return traduzirErro(error.message);
-
-    // Migra dados legados (sem user_id) para este usuário na primeira entrada
     if (data.user) await adoptLegacyData(data.user.id);
-
     return null;
+  }, []);
+
+  // ── Login com Google OAuth ────────────────────────────────────────────────
+  const loginWithGoogle = useCallback(async (): Promise<string | null> => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: { prompt: 'select_account' },
+      },
+    });
+    if (error) return traduzirErro(error.message);
+    return null; // redireciona para o Google — a sessão chegará via onAuthStateChange
   }, []);
 
   // ── Logout ────────────────────────────────────────────────────────────────
@@ -78,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={{
       user,
       login,
+      loginWithGoogle,
       logout,
       resetPassword,
       isAuthenticated: !!user,
