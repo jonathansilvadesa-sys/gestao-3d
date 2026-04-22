@@ -25,6 +25,7 @@ import type { AppTab, Product, EstoqueMovimento } from '@/types';
 const ProductModal     = lazy(() => import('@/components/products/ProductModal').then((m) => ({ default: m.ProductModal })));
 const EditProductModal = lazy(() => import('@/components/products/EditProductModal').then((m) => ({ default: m.EditProductModal })));
 const NovaModal        = lazy(() => import('@/components/products/NovaModal').then((m) => ({ default: m.NovaModal })));
+const ImportModal      = lazy(() => import('@/components/products/ImportModal').then((m) => ({ default: m.ImportModal })));
 
 
 export default function App() {
@@ -40,6 +41,7 @@ export default function App() {
   const [selected, setSelected]         = useState<Product | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showNova, setShowNova]         = useState(false);
+  const [showImport, setShowImport]     = useState(false);
   const [showSearch, setShowSearch]     = useState(false);
   const [appReady, setAppReady]         = useState(false);
 
@@ -142,6 +144,7 @@ export default function App() {
             onSelect={setSelected}
             onEdit={setEditingProduct}
             onRemove={removeProduct}
+            onImport={() => setShowImport(true)}
           />
         )}
             {tab === 'materiais' && <MateriaisTab />}
@@ -333,6 +336,9 @@ export default function App() {
         )}
         {showNova && (
           <NovaModal onClose={() => setShowNova(false)} onAdd={addProduct} />
+        )}
+        {showImport && (
+          <ImportModal onClose={() => setShowImport(false)} />
         )}
       </Suspense>
 
