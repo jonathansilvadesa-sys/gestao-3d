@@ -12,15 +12,38 @@ import type { Invite } from '@/types';
 type PanelTab = 'tenants' | 'invites';
 
 export function DeveloperBadge() {
-  const { myRole, tenant, allTenants, switchTenant } = useTenant();
-  const [open,       setOpen]       = useState(false);
-  const [panelTab,   setPanelTab]   = useState<PanelTab>('tenants');
-  const [invites,    setInvites]    = useState<Invite[]>([]);
-  const [invLoading, setInvLoading] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [copied,     setCopied]     = useState<string | null>(null);
+  const { myRole, tenant, allTenants, switchTenant, createTenant } = useTenant();
+  const [open,         setOpen]         = useState(false);
+  const [panelTab,     setPanelTab]     = useState<PanelTab>('tenants');
+  const [invites,      setInvites]      = useState<Invite[]>([]);
+  const [invLoading,   setInvLoading]   = useState(false);
+  const [generating,   setGenerating]   = useState(false);
+  const [copied,       setCopied]       = useState<string | null>(null);
+  // ── Criar nova empresa ──────────────────────────────────────────────────────
+  const [showNovaEmp,  setShowNovaEmp]  = useState(false);
+  const [nomeEmp,      setNomeEmp]      = useState('');
+  const [criandoEmp,   setCriandoEmp]   = useState(false);
+  const [empError,     setEmpError]     = useState('');
 
   if (myRole !== 'developer') return null;
+
+  const handleCriarEmpresa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nomeEmp.trim()) return;
+    setCriandoEmp(true);
+    setEmpError('');
+    const err = await createTenant(nomeEmp.trim());
+    if (err) {
+      setEmpError(err);
+      setCriandoEmp(false);
+    } else {
+      setNomeEmp('');
+      setShowNovaEmp(false);
+      setCriandoEmp(false);
+      // Recarrega a página para atualizar allTenants
+      window.location.reload();
+    }
+  };
 
   // ── Carrega convites ─────────────────────────────────────────────────────────
   const loadInvites = useCallback(async () => {
@@ -135,9 +158,60 @@ export function DeveloperBadge() {
 
             {/* ── Aba Empresas ─────────────────────────────────────────────────── */}
             {panelTab === 'tenants' && (
-              <div className="overflow-y-auto flex-1">
+              <div className="flex flex-col flex-1 overflow-hidden">
+
+                {/* Botão / formulário nova empresa */}
+                <div className="px-4 py-3 border-b border-gray-50 dark:border-gray-700 flex-shrink-0">
+                  {!showNovaEmp ? (
+                    <button
+                      onClick={() => setShowNovaEmp(true)}
+                      className="w-full flex items-center justify-center gap-2 border border-dashed border-indigo-300 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-500 text-xs font-semibold px-4 py-2 rounded-xl transition"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                      Nova empresa
+                    </button>
+                  ) : (
+                    <form onSubmit={handleCriarEmpresa} className="space-y-2">
+                      <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">Nome da empresa</p>
+                      <input
+                        autoFocus
+                        value={nomeEmp}
+                        onChange={(e) => setNomeEmp(e.target.value)}
+                        placeholder="Ex: Print&Play 3D"
+                        required
+                        className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                      />
+                      {empError && <p className="text-xs text-red-500">{empError}</p>}
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          disabled={criandoEmp || !nomeEmp.trim()}
+                          className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold py-2 rounded-lg transition flex items-center justify-center gap-1.5"
+                        >
+                          {criandoEmp ? (
+                            <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                            </svg>
+                          ) : null}
+                          {criandoEmp ? 'Criando…' : 'Criar'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowNovaEmp(false); setNomeEmp(''); setEmpError(''); }}
+                          className="px-3 py-2 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 dark:border-gray-600 rounded-lg transition"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+
+                <div className="overflow-y-auto flex-1">
                 {allTenants.length === 0 ? (
-                  <p className="text-xs text-gray-400 px-4 py-6 text-center">Nenhuma empresa ainda</p>
+                  <p className="text-xs text-gray-400 px-4 py-6 text-center">Nenhuma empresa ainda.<br/>Crie a primeira acima.</p>
                 ) : (
                   <div className="p-2">
                     {allTenants.map((t) => (
@@ -170,7 +244,8 @@ export function DeveloperBadge() {
                     ))}
                   </div>
                 )}
-              </div>
+                </div>{/* /overflow-y-auto */}
+              </div>{/* /flex-col */}
             )}
 
             {/* ── Aba Convites ──────────────────────────────────────────────────── */}
