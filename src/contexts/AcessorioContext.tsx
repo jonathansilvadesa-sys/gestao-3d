@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { dbGet, dbSet } from '@/lib/db';
 import type {
   AcessorioEstoque, AcessorioMovimento, AcessorioVariante,
   AcessorioContextType,
@@ -72,21 +73,36 @@ const INITIAL_ACESSORIOS: AcessorioEstoque[] = [
 ];
 
 // ─── Context ──────────────────────────────────────────────────────────────────
-const STORAGE_KEY = 'gestao3d_acessorios';
+const LS_KEY = 'gestao3d_acessorios';
+const DB_KEY = 'acessorios';
 const AcessorioContext = createContext<AcessorioContextType | null>(null);
 
 export function AcessorioProvider({ children }: { children: ReactNode }) {
   const [acessorios, setAcessorios] = useState<AcessorioEstoque[]>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(LS_KEY);
       return stored ? JSON.parse(stored) : INITIAL_ACESSORIOS;
     } catch {
       return INITIAL_ACESSORIOS;
     }
   });
 
+  useEffect(() => {
+    dbGet<AcessorioEstoque[]>(DB_KEY).then((remoto) => {
+      if (remoto && Array.isArray(remoto) && remoto.length > 0) {
+        setAcessorios(remoto);
+        localStorage.setItem(LS_KEY, JSON.stringify(remoto));
+      } else {
+        const local = localStorage.getItem(LS_KEY);
+        const dados = local ? JSON.parse(local) : INITIAL_ACESSORIOS;
+        dbSet(DB_KEY, dados).catch(console.error);
+      }
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const persist = useCallback((next: AcessorioEstoque[]) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    localStorage.setItem(LS_KEY, JSON.stringify(next));
+    dbSet(DB_KEY, next).catch(console.error);
     return next;
   }, []);
 

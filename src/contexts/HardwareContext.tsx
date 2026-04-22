@@ -1,7 +1,9 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { dbGet, dbSet } from '@/lib/db';
 import type { HardwarePeca, HardwareContextType } from '@/types';
 
-const STORAGE_KEY = 'gestao3d_hardware';
+const LS_KEY = 'gestao3d_hardware';
+const DB_KEY = 'hardware';
 
 function makeId() {
   return `hw_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -12,15 +14,31 @@ const HardwareContext = createContext<HardwareContextType | null>(null);
 export function HardwareProvider({ children }: { children: ReactNode }) {
   const [pecas, setPecas] = useState<HardwarePeca[]>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(LS_KEY);
       return stored ? JSON.parse(stored) : [];
     } catch {
       return [];
     }
   });
 
+  useEffect(() => {
+    dbGet<HardwarePeca[]>(DB_KEY).then((remoto) => {
+      if (remoto && Array.isArray(remoto) && remoto.length > 0) {
+        setPecas(remoto);
+        localStorage.setItem(LS_KEY, JSON.stringify(remoto));
+      } else {
+        const local = localStorage.getItem(LS_KEY);
+        if (local) {
+          const dados = JSON.parse(local) as HardwarePeca[];
+          if (dados.length > 0) dbSet(DB_KEY, dados).catch(console.error);
+        }
+      }
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const persist = useCallback((next: HardwarePeca[]) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    localStorage.setItem(LS_KEY, JSON.stringify(next));
+    dbSet(DB_KEY, next).catch(console.error);
     return next;
   }, []);
 
