@@ -338,7 +338,7 @@ export interface MaterialContextType {
 export type UserRole = 'admin' | 'operator';
 
 export interface User {
-  id: number;
+  id: string;          // UUID do Supabase
   nome: string;
   email: string;
   role: UserRole;
@@ -347,9 +347,11 @@ export interface User {
 
 export interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => boolean;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<string | null>; // null = ok, string = mensagem de erro
+  logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<string | null>;
   isAuthenticated: boolean;
+  authLoading: boolean;  // true enquanto Supabase verifica sessão inicial
 }
 
 // ─── Tabs da aplicação ────────────────────────────────────────────────────────

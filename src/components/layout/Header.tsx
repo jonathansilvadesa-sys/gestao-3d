@@ -398,7 +398,7 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
                     {theme === 'dark' ? '🌞 Tema Claro' : '🌙 Tema Escuro'}
                   </button>
                   <button
-                    onClick={logout}
+                    onClick={() => logout()}
                     className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition"
                   >Sair da conta</button>
                 </div>

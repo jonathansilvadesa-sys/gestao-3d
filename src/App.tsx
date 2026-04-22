@@ -28,7 +28,7 @@ const NovaModal        = lazy(() => import('@/components/products/NovaModal').th
 
 
 export default function App() {
-  const { isAuthenticated }                                     = useAuth();
+  const { isAuthenticated, authLoading }                        = useAuth();
   const { products, addProduct, updateProduct, removeProduct }  = useProducts();
   const { registrarVenda }                                      = useSettings();
   const { addMovimento }                                        = useAcessorios();
@@ -94,6 +94,16 @@ export default function App() {
     const bk = Math.ceil((p.custoUn * lote) / p.lucroLiquidoConsumidor);
     return (p.estoque ?? 0) < bk;
   }).length, [products]);
+
+  // Aguarda Supabase verificar sessão salva antes de decidir se mostra login
+  if (authLoading) return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-2xl shadow-lg animate-pulse">🖨</div>
+        <p className="text-sm text-gray-400 font-medium">Carregando…</p>
+      </div>
+    </div>
+  );
 
   if (!isAuthenticated) return <LoginPage />;
 

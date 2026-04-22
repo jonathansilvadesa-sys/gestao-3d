@@ -1,59 +1,88 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { supabase } from '@/lib/supabase';
+import { adoptLegacyData } from '@/lib/db';
 import type { AuthContextType, User, UserRole } from '@/types';
 
-// ─── Usuários mock (substituir por Clerk/Auth0 + backend futuramente) ─────────
-const MOCK_USERS: (User & { password: string })[] = [
-  {
-    id: 1,
-    nome: 'Jonathan Silva',
-    email: 'jonathan@gestao3d.com',
-    password: 'admin123',
-    role: 'admin' as UserRole,
-    avatar: 'J',
-  },
-  {
-    id: 2,
-    nome: 'Operador',
-    email: 'operador@gestao3d.com',
-    password: 'op123',
-    role: 'operator' as UserRole,
-    avatar: 'O',
-  },
-];
+// ─── Converte sessão Supabase → User interno ──────────────────────────────────
+function toUser(sbUser: { id: string; email?: string; user_metadata?: Record<string, unknown> }): User {
+  const email = sbUser.email ?? '';
+  const nome  = (sbUser.user_metadata?.full_name as string) ?? email.split('@')[0];
+  const role  = (sbUser.user_metadata?.role as UserRole) ?? 'admin';
+  return {
+    id:     sbUser.id,
+    nome,
+    email,
+    role,
+    avatar: nome.charAt(0).toUpperCase(),
+  };
+}
 
-const SESSION_KEY = 'gestao3d_user';
+// ─── Mensagens de erro em português ──────────────────────────────────────────
+function traduzirErro(msg: string): string {
+  if (msg.includes('Invalid login credentials'))  return 'E-mail ou senha incorretos.';
+  if (msg.includes('Email not confirmed'))         return 'Confirme seu e-mail antes de entrar.';
+  if (msg.includes('User already registered'))     return 'Este e-mail já está cadastrado.';
+  if (msg.includes('rate limit'))                  return 'Muitas tentativas. Aguarde um momento.';
+  if (msg.includes('Network'))                     return 'Sem conexão. Verifique sua internet.';
+  return msg;
+}
 
-// ─── Context ──────────────────────────────────────────────────────────────────
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    try {
-      const stored = localStorage.getItem(SESSION_KEY);
-      return stored ? (JSON.parse(stored) as User) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [user, setUser]             = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true); // true até a sessão inicial ser verificada
 
-  const login = useCallback((email: string, password: string): boolean => {
-    const found = MOCK_USERS.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-    if (!found) return false;
-    const { password: _pw, ...safeUser } = found;
-    setUser(safeUser);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(safeUser));
-    return true;
+  // ── Verifica sessão existente e escuta mudanças de auth ───────────────────
+  useEffect(() => {
+    // Sessão inicial (token persistido no localStorage do browser)
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) setUser(toUser(data.session.user));
+      setAuthLoading(false);
+    });
+
+    // Listener para login/logout/refresh de token
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ? toUser(session.user) : null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const logout = useCallback(() => {
-    setUser(null);
-    localStorage.removeItem(SESSION_KEY);
+  // ── Login com e-mail + senha ──────────────────────────────────────────────
+  const login = useCallback(async (email: string, password: string): Promise<string | null> => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return traduzirErro(error.message);
+
+    // Migra dados legados (sem user_id) para este usuário na primeira entrada
+    if (data.user) await adoptLegacyData(data.user.id);
+
+    return null;
+  }, []);
+
+  // ── Logout ────────────────────────────────────────────────────────────────
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
+  }, []);
+
+  // ── Reset de senha via e-mail ─────────────────────────────────────────────
+  const resetPassword = useCallback(async (email: string): Promise<string | null> => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    if (error) return traduzirErro(error.message);
+    return null;
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{
+      user,
+      login,
+      logout,
+      resetPassword,
+      isAuthenticated: !!user,
+      authLoading,
+    }}>
       {children}
     </AuthContext.Provider>
   );
