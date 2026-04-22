@@ -57,7 +57,8 @@ export async function dbSet<T>(key: string, value: T): Promise<void> {
     };
     if (userId) row.user_id = userId;
 
-    const { error } = await supabase.from(TABLE).upsert(row);
+    // onConflict: 'key' porque a PK ainda é só "key" (user_id é coluna auxiliar)
+    const { error } = await supabase.from(TABLE).upsert(row, { onConflict: 'key' });
     if (error) console.warn('[db] set error:', key, error.message);
   } catch (e) {
     console.warn('[db] set exception:', key, e);
