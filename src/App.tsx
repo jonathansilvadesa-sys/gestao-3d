@@ -8,6 +8,7 @@ import { useMaterials }      from '@/contexts/MaterialContext';
 import { useToast }          from '@/contexts/ToastContext';
 import { useTour }           from '@/contexts/TourContext';
 import { LoginPage }         from '@/components/auth/LoginPage';
+import { SignupPage }        from '@/components/auth/SignupPage';
 import { OnboardingTenant }  from '@/components/auth/OnboardingTenant';
 import { Header }            from '@/components/layout/Header';
 import { Dashboard }         from '@/components/dashboard/Dashboard';
@@ -41,6 +42,7 @@ export default function App() {
   const { addToast }                                            = useToast();
   const { startTour, tourCompleted, registerNavigate }          = useTour();
 
+  const [authView, setAuthView]          = useState<'login' | 'signup'>('login');
   const [tab, setTab]                   = useState<AppTab>('dashboard');
   const [selected, setSelected]         = useState<Product | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -111,7 +113,10 @@ export default function App() {
     </div>
   );
 
-  if (!isAuthenticated) return <LoginPage />;
+  if (!isAuthenticated) {
+    if (authView === 'signup') return <SignupPage onBack={() => setAuthView('login')} />;
+    return <LoginPage onShowSignup={() => setAuthView('signup')} />;
+  }
 
   // Usuário autenticado mas sem empresa configurada → onboarding
   if (needsTenantSetup) return <OnboardingTenant />;

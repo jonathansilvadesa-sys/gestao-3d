@@ -3,7 +3,9 @@ import { useAuth } from '@/contexts/AuthContext';
 
 type Mode = 'login' | 'reset';
 
-export function LoginPage() {
+interface Props { onShowSignup?: () => void; }
+
+export function LoginPage({ onShowSignup }: Props) {
   const { login, loginWithGoogle, resetPassword } = useAuth();
   const [mode, setMode]         = useState<Mode>('login');
   const [email, setEmail]       = useState('');
@@ -143,6 +145,23 @@ export function LoginPage() {
                 >
                   Esqueci minha senha
                 </button>
+
+                {onShowSignup && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <div className="flex-1 border-t border-gray-100"/>
+                    <span className="text-xs text-gray-300">ou</span>
+                    <div className="flex-1 border-t border-gray-100"/>
+                  </div>
+                )}
+                {onShowSignup && (
+                  <button
+                    type="button"
+                    onClick={onShowSignup}
+                    className="w-full text-sm font-semibold text-gray-600 hover:text-indigo-600 border border-gray-200 hover:border-indigo-300 rounded-2xl py-3 transition text-center"
+                  >
+                    Não tem conta? <span className="text-indigo-500">Criar agora →</span>
+                  </button>
+                )}
               </form>
             </>
           ) : (

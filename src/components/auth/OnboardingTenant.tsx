@@ -7,9 +7,10 @@
  *   2. (futuro) "Entrar com convite" → código de acesso
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth }   from '@/contexts/AuthContext';
+import { supabase }  from '@/lib/supabase';
 
 export function OnboardingTenant() {
   const { createTenant } = useTenant();
@@ -18,6 +19,14 @@ export function OnboardingTenant() {
   const [nome, setNome]         = useState('');
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState('');
+
+  // Pré-preenche nome da empresa se veio do cadastro (user_metadata.initial_company)
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      const initial = data?.session?.user?.user_metadata?.initial_company as string | undefined;
+      if (initial && !nome) setNome(initial);
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

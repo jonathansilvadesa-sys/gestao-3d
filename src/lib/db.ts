@@ -17,6 +17,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import { enqueue, dequeueAll, removeFromQueue } from '@/utils/offlineQueue';
 
 const TABLE = 'app_store';
 
@@ -58,8 +59,15 @@ export async function dbGet<T>(key: string): Promise<T | null> {
   }
 }
 
-// ── Escrita (upsert) ──────────────────────────────────────────────────────────
+// ── Escrita (upsert) com suporte offline ──────────────────────────────────────
 export async function dbSet<T>(key: string, value: T): Promise<void> {
+  // Se offline → enfileira para sync posterior
+  if (!navigator.onLine) {
+    await enqueue({ key, value, tenantId: _activeTenantId, ts: Date.now() });
+    console.info('[db] offline — enfileirado:', key);
+    return;
+  }
+
   try {
     const row: Record<string, unknown> = {
       key,
@@ -82,8 +90,49 @@ export async function dbSet<T>(key: string, value: T): Promise<void> {
       if (error) console.warn('[db] set error (legacy):', key, error.message);
     }
   } catch (e) {
-    console.warn('[db] set exception:', key, e);
+    // Falha de rede inesperada → enfileira também
+    await enqueue({ key, value, tenantId: _activeTenantId, ts: Date.now() });
+    console.warn('[db] set exception → enfileirado:', key, e);
   }
+}
+
+// ── Processa a fila offline quando a conexão volta ────────────────────────────
+export async function flushOfflineQueue(): Promise<void> {
+  const pending = await dequeueAll();
+  if (pending.length === 0) return;
+
+  console.info('[db] flushing offline queue:', pending.length, 'items');
+
+  for (const item of pending) {
+    try {
+      const row: Record<string, unknown> = {
+        key:        item.key,
+        value:      item.value,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (item.tenantId) {
+        row.tenant_id = item.tenantId;
+        const { error } = await supabase
+          .from(TABLE)
+          .upsert(row, { onConflict: 'key,tenant_id' });
+        if (error) { console.warn('[db] flush error (tenant):', item.key, error.message); continue; }
+      } else {
+        const userId = await getUserId();
+        if (userId) row.user_id = userId;
+        const { error } = await supabase
+          .from(TABLE)
+          .upsert(row, { onConflict: 'key' });
+        if (error) { console.warn('[db] flush error (legacy):', item.key, error.message); continue; }
+      }
+
+      if (item.id !== undefined) await removeFromQueue(item.id);
+    } catch (e) {
+      console.warn('[db] flush exception for', item.key, e);
+    }
+  }
+
+  console.info('[db] offline queue flushed');
 }
 
 // ── Migra rows legadas (user_id) para um tenant ───────────────────────────────

@@ -57,6 +57,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   }, []);
 
+  // ── Cadastro com e-mail + senha ──────────────────────────────────────────────
+  const signup = useCallback(async (
+    email: string,
+    password: string,
+    nome: string,
+    nomeEmpresa: string,
+  ): Promise<string | null> => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: nome, initial_company: nomeEmpresa } },
+    });
+    if (error) return traduzirErro(error.message);
+    // Se email confirmation estiver habilitado no Supabase, session será null
+    if (!data.session) return '__confirm_email__';
+    return null;
+  }, []);
+
   // ── Login com Google OAuth ────────────────────────────────────────────────
   const loginWithGoogle = useCallback(async (): Promise<string | null> => {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -89,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       login,
       loginWithGoogle,
+      signup,
       logout,
       resetPassword,
       isAuthenticated: !!user,

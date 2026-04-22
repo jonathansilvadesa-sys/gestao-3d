@@ -349,10 +349,23 @@ export interface AuthContextType {
   user: User | null;
   login:           (email: string, password: string) => Promise<string | null>;
   loginWithGoogle: () => Promise<string | null>;
+  signup:          (email: string, password: string, nome: string, nomeEmpresa: string) => Promise<string | null>;
   logout:          () => Promise<void>;
   resetPassword:   (email: string) => Promise<string | null>;
   isAuthenticated: boolean;
   authLoading: boolean;
+}
+
+// ─── Convites ─────────────────────────────────────────────────────────────────
+export interface Invite {
+  id: string;
+  code: string;
+  usado: boolean;
+  criadoPor?: string;
+  usadoPor?: string;
+  usadoEm?: string;
+  expiraEm?: string;
+  criadoEm: string;
 }
 
 // ─── Multi-tenant ─────────────────────────────────────────────────────────────

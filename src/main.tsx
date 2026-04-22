@@ -14,6 +14,22 @@ import { ToastProvider }     from '@/contexts/ToastContext';
 import { TourProvider }      from '@/contexts/TourContext';
 import './index.css';
 import App from './App';
+import { flushOfflineQueue } from '@/lib/db';
+
+// ── Service Worker ────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      .then((reg) => console.info('[SW] registrado:', reg.scope))
+      .catch((e) => console.warn('[SW] falha no registro:', e));
+  });
+
+  // Quando voltar a ficar online, sincroniza a fila de escritas pendentes
+  window.addEventListener('online', () => {
+    console.info('[SW] online — flushing queue...');
+    flushOfflineQueue().catch(console.warn);
+  });
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
