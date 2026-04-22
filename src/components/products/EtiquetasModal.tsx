@@ -9,13 +9,12 @@ interface Props {
 }
 
 // ── Gera o payload do QR Code ─────────────────────────────────────────────────
-function buildQrPayload(p: Product, preco: number): string {
-  return JSON.stringify({
-    id:    p.id,
-    nome:  p.nome,
-    preco,
-    custo: p.custoUn,
-  });
+// Custo só é incluído no template "detalhada" (uso interno).
+// Nos demais o QR expõe apenas id, nome e preço — seguro para anúncios públicos.
+function buildQrPayload(p: Product, preco: number, incluirCusto: boolean): string {
+  const payload: Record<string, unknown> = { id: p.id, nome: p.nome, preco };
+  if (incluirCusto) payload.custo = p.custoUn;
+  return JSON.stringify(payload);
 }
 
 // ── Renderiza QR Code num <canvas> ────────────────────────────────────────────
@@ -56,7 +55,7 @@ export function EtiquetasModal({ product, onClose }: Props) {
   useEffect(() => {
     if (!canvasRef.current) return;
     setQrReady(false);
-    renderQr(canvasRef.current, buildQrPayload(product, precoEtiqueta), qrSize)
+    renderQr(canvasRef.current, buildQrPayload(product, precoEtiqueta, template === 'detalhada'), qrSize)
       .then(() => setQrReady(true))
       .catch(console.error);
   }, [product, precoEtiqueta, qrSize]);
@@ -66,7 +65,7 @@ export function EtiquetasModal({ product, onClose }: Props) {
     const printCanvas = printCanvasRef.current;
     if (!printCanvas) return;
 
-    await renderQr(printCanvas, buildQrPayload(product, precoEtiqueta), 200);
+    await renderQr(printCanvas, buildQrPayload(product, precoEtiqueta, template === 'detalhada'), 200);
     const qrDataUrl = printCanvas.toDataURL('image/png');
 
     const buildCard = (i: number) => `
