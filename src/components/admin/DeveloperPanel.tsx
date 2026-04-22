@@ -244,8 +244,8 @@ export function DeveloperBadge() {
                     ))}
                   </div>
                 )}
-                </div>{/* /overflow-y-auto */}
-              </div>{/* /flex-col */}
+                </div>
+              </div>
             )}
 
             {/* ── Aba Convites ──────────────────────────────────────────────────── */}
