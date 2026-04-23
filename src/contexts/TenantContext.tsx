@@ -74,7 +74,7 @@ export function TenantProvider({ children }: Props) {
       const activeTenant = active.tenants as unknown as Tenant;
       const activeRole   = active.role as TenantRole;
 
-      setTenant(mapTenant(activeTenant));
+      setTenant(mapTenant(activeTenant as unknown as Record<string, unknown>));
       setMyRole(activeRole);
       setActiveTenant(activeTenant.id);
       localStorage.setItem('gestao3d_active_tenant', activeTenant.id);

@@ -335,7 +335,7 @@ export interface MaterialContextType {
 }
 
 // ─── Usuário e autenticação ───────────────────────────────────────────────────
-export type UserRole = 'admin' | 'operator';
+export type UserRole = 'admin' | 'operator' | 'developer';
 
 export interface User {
   id: string;          // UUID do Supabase

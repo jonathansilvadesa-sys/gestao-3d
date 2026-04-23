@@ -144,6 +144,8 @@ export function importRowToProduct(row: ImportRow, settings: AppSettings): Produ
     custoAnuncio: '0',
     maoObraHoras: '0',
     maoObraTaxa: String((settings as { maoObraTaxa?: number }).maoObraTaxa || 0),
+    unidadesMes: String(settings.unidadesMes || 10),
+    canalVenda: '',
   };
 
   const calc = calcProductFromForm(form, settings, [filamento], []);
