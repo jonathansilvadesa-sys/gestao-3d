@@ -5,13 +5,22 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
+import { useAuth }   from '@/contexts/AuthContext';
 import { supabase }  from '@/lib/supabase';
 import type { Invite } from '@/types';
 
 // ── Seções do painel ───────────────────────────────────────────────────────────
 type PanelTab = 'tenants' | 'invites';
 
-export function DeveloperBadge() {
+interface DeveloperBadgeProps {
+  /** Quando true, abre o painel automaticamente (ex.: clique no menu do avatar) */
+  externalTrigger?: boolean;
+  /** Chamado ao fechar para que o pai possa resetar o trigger */
+  onExternalClose?: () => void;
+}
+
+export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBadgeProps = {}) {
+  const { user }                                                    = useAuth();
   const { myRole, tenant, allTenants, switchTenant, createTenant } = useTenant();
   const [open,         setOpen]         = useState(false);
   const [panelTab,     setPanelTab]     = useState<PanelTab>('tenants');
@@ -25,7 +34,21 @@ export function DeveloperBadge() {
   const [criandoEmp,   setCriandoEmp]   = useState(false);
   const [empError,     setEmpError]     = useState('');
 
-  if (myRole !== 'developer') return null;
+  // Visível se o user_metadata.role OU a membership do tenant for 'developer'
+  const isDeveloper = user?.role === 'developer' || myRole === 'developer';
+  if (!isDeveloper) return null;
+
+  // Abre automaticamente quando disparado externamente (ex.: menu do avatar)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (externalTrigger) setOpen(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalTrigger]);
+
+  const closePanel = () => {
+    setOpen(false);
+    onExternalClose?.();
+  };
 
   const handleCriarEmpresa = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,7 +150,7 @@ export function DeveloperBadge() {
       {open && (
         <>
           {/* Backdrop */}
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 z-40" onClick={closePanel} />
 
           {/* Dropdown */}
           <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 z-50 overflow-hidden flex flex-col max-h-[520px]">
@@ -217,7 +240,7 @@ export function DeveloperBadge() {
                     {allTenants.map((t) => (
                       <button
                         key={t.id}
-                        onClick={() => { switchTenant(t.id); setOpen(false); }}
+                        onClick={() => { switchTenant(t.id); closePanel(); }}
                         className={`w-full text-left px-3 py-2.5 rounded-xl transition flex items-center gap-3 ${
                           tenant?.id === t.id
                             ? 'bg-indigo-50 dark:bg-indigo-900/40'
@@ -347,7 +370,7 @@ export function DeveloperBadge() {
             {/* Footer */}
             <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-700 flex-shrink-0">
               <p className="text-[10px] text-gray-400 text-center font-mono">
-                {tenant?.id?.slice(0, 8) ?? '—'}… · {myRole}
+                {tenant?.id?.slice(0, 8) ?? '—'}… · {user?.role === 'developer' ? 'developer (meta)' : myRole}
               </p>
             </div>
           </div>

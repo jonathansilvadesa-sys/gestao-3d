@@ -32,9 +32,10 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
   const { theme, toggleTheme } = useTheme();
   const { getAlertasEstoque: hwEstoque, getAlertasHoras: hwHoras } = useHardware();
 
-  const [showSettings, setShowSettings] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showNotif,    setShowNotif]    = useState(false);
+  const [showSettings,  setShowSettings]  = useState(false);
+  const [showUserMenu,  setShowUserMenu]  = useState(false);
+  const [showNotif,     setShowNotif]     = useState(false);
+  const [devTrigger,    setDevTrigger]    = useState(false);
 
   const notifRef = useRef<HTMLDivElement>(null);
 
@@ -117,7 +118,10 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
           <div className="flex items-center gap-1.5 sm:gap-2">
 
             {/* ── Badge de Developer ────────────────────────────────────── */}
-            <DeveloperBadge />
+            <DeveloperBadge
+              externalTrigger={devTrigger}
+              onExternalClose={() => setDevTrigger(false)}
+            />
 
             {/* ── Busca Global — visível em todas as telas ─────────────── */}
             {onSearch && (
@@ -387,10 +391,31 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
                   <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700 mb-1">
                     <p className="font-semibold text-gray-800 dark:text-gray-100 text-sm">{user?.nome}</p>
                     <p className="text-xs text-gray-400">{user?.email}</p>
-                    <span className="text-xs bg-indigo-100 text-indigo-600 font-bold px-2 py-0.5 rounded-full mt-1 inline-block">
-                      {user?.role === 'admin' ? 'Admin' : 'Operador'}
-                    </span>
+                    {user?.role === 'developer' ? (
+                      <span className="text-xs bg-amber-100 text-amber-700 font-bold px-2 py-0.5 rounded-full mt-1 inline-flex items-center gap-1">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                          <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                        </svg>
+                        Developer
+                      </span>
+                    ) : user?.role === 'admin' ? (
+                      <span className="text-xs bg-indigo-100 text-indigo-600 font-bold px-2 py-0.5 rounded-full mt-1 inline-block">Admin</span>
+                    ) : (
+                      <span className="text-xs bg-gray-100 text-gray-500 font-bold px-2 py-0.5 rounded-full mt-1 inline-block">Operador</span>
+                    )}
                   </div>
+                  {/* ── Botão Painel Dev (só para developers) ── */}
+                  {user?.role === 'developer' && (
+                    <button
+                      onClick={() => { setDevTrigger(true); setShowUserMenu(false); }}
+                      className="w-full text-left px-3 py-2 text-sm text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-xl transition flex items-center gap-2 font-semibold"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                      </svg>
+                      Painel Dev
+                    </button>
+                  )}
                   <button
                     onClick={() => { setShowSettings(true); setShowUserMenu(false); }}
                     className="w-full text-left px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition"
