@@ -33,7 +33,7 @@ const ImportModal      = lazy(() => import('@/components/products/ImportModal').
 
 
 export default function App() {
-  const { isAuthenticated, authLoading }                        = useAuth();
+  const { isAuthenticated, authLoading, user }                  = useAuth();
   const { needsTenantSetup, tenantLoading }                     = useTenant();
   const { products, addProduct, updateProduct, removeProduct }  = useProducts();
   const { registrarVenda }                                      = useSettings();
@@ -118,8 +118,9 @@ export default function App() {
     return <LoginPage onShowSignup={() => setAuthView('signup')} />;
   }
 
-  // Usuário autenticado mas sem empresa configurada → onboarding
-  if (needsTenantSetup) return <OnboardingTenant />;
+  // Developer sem empresa configurada: pula onboarding, usa o DeveloperPanel para criar
+  // Usuários normais sem empresa → onboarding obrigatório
+  if (needsTenantSetup && user?.role !== 'developer') return <OnboardingTenant />;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">

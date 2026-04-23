@@ -125,32 +125,35 @@ export function TenantProvider({ children }: Props) {
   }, [userId, loadTenant]);
 
   // ── createTenant ────────────────────────────────────────────────────────────
+  // Usa RPC SECURITY DEFINER para criar tenant + membership atomicamente,
+  // bypassando o RLS (evita "new row violates row-level security policy").
   const createTenant = useCallback(async (nome: string): Promise<string | null> => {
     if (!userId) return 'Usuário não autenticado';
-    const slug = nome.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').slice(0, 50);
 
     try {
-      // 1. Cria o tenant
-      const { data: newTenant, error: tErr } = await supabase
+      // 1. Chama a função SQL create_tenant_for_user() — bypassa RLS
+      const { data: newTenantId, error: rpcErr } = await supabase
+        .rpc('create_tenant_for_user', { p_nome: nome });
+
+      if (rpcErr || !newTenantId) {
+        console.warn('[tenant] createTenant rpc error:', rpcErr?.message);
+        return rpcErr?.message ?? 'Erro ao criar empresa';
+      }
+
+      // 2. Busca o tenant recém-criado
+      const { data: newTenant, error: fetchErr } = await supabase
         .from('tenants')
-        .insert({ nome, slug })
-        .select()
+        .select('*')
+        .eq('id', newTenantId)
         .single();
 
-      if (tErr || !newTenant) return tErr?.message ?? 'Erro ao criar empresa';
-
-      // 2. Adiciona o criador como owner
-      const { error: mErr } = await supabase
-        .from('tenant_memberships')
-        .insert({ tenant_id: newTenant.id, user_id: userId, role: 'owner' });
-
-      if (mErr) return mErr.message;
+      if (fetchErr || !newTenant) return fetchErr?.message ?? 'Erro ao carregar empresa criada';
 
       // 3. Migra dados legados (user_id → tenant_id)
-      await migrateUserDataToTenant(userId, newTenant.id);
+      await migrateUserDataToTenant(userId, newTenantId);
 
       // 4. Atualiza contexto local
-      const t = mapTenant(newTenant);
+      const t = mapTenant(newTenant as Record<string, unknown>);
       setTenant(t);
       setMyRole('owner');
       setActiveTenant(t.id);
