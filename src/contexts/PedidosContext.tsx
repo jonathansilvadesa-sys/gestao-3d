@@ -1,9 +1,10 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import { dbGet, dbSet } from '@/lib/db';
+import { useTenant }    from '@/contexts/TenantContext';
 import type { Pedido, PedidoStatus, PedidosContextType } from '@/types';
 
-const DB_KEY = 'pedidos';
-const LS_KEY = 'gestao3d_pedidos';
+const DB_KEY  = 'pedidos';
+const LS_BASE = 'gestao3d_pedidos';
 
 const PedidosContext = createContext<PedidosContextType | null>(null);
 
@@ -14,33 +15,39 @@ export function usePedidos(): PedidosContextType {
 }
 
 export function PedidosProvider({ children }: { children: ReactNode }) {
-  const [pedidos, setPedidos] = useState<Pedido[]>(() => {
-    try {
-      const s = localStorage.getItem(LS_KEY);
-      if (s) {
-        const p = JSON.parse(s) as Pedido[];
-        if (Array.isArray(p)) return p;
-      }
-    } catch { /* ignora */ }
-    return [];
-  });
+  const { tenant } = useTenant();
+  const tenantId   = tenant?.id ?? null;
+  const lsKey      = tenantId ? `${LS_BASE}_${tenantId}` : null;
 
-  // ── Sincroniza com Supabase na montagem ──────────────────────────────────
+  const [pedidos, setPedidos] = useState<Pedido[]>([]);
+
+  // ── Recarrega quando o tenant muda ─────────────────────────────────────
   useEffect(() => {
+    if (!tenantId) { setPedidos([]); return; }
+
+    setPedidos([]);
+
     dbGet<Pedido[]>(DB_KEY).then((remoto) => {
       if (remoto && Array.isArray(remoto) && remoto.length > 0) {
         setPedidos(remoto);
-        localStorage.setItem(LS_KEY, JSON.stringify(remoto));
-      } else {
-        const local = localStorage.getItem(LS_KEY);
-        const dados = local ? JSON.parse(local) : [];
-        if (dados.length > 0) dbSet(DB_KEY, dados).catch(console.error);
+        if (lsKey) localStorage.setItem(lsKey, JSON.stringify(remoto));
+      } else if (lsKey) {
+        try {
+          const stored = localStorage.getItem(lsKey);
+          if (stored) {
+            const cached = JSON.parse(stored) as Pedido[];
+            if (Array.isArray(cached) && cached.length > 0) {
+              setPedidos(cached);
+              dbSet(DB_KEY, cached).catch(console.error);
+            }
+          }
+        } catch { /* ignora */ }
       }
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tenantId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const persist = (next: Pedido[]) => {
-    localStorage.setItem(LS_KEY, JSON.stringify(next));
+    if (lsKey) localStorage.setItem(lsKey, JSON.stringify(next));
     dbSet(DB_KEY, next).catch(console.error);
     return next;
   };

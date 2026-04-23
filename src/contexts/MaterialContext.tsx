@@ -1,59 +1,64 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import { dbGet, dbSet } from '@/lib/db';
+import { useTenant }    from '@/contexts/TenantContext';
 import type { Material, MaterialContextType } from '@/types';
 
-const LS_KEY = 'gestao3d_materials';
-const DB_KEY = 'materials';
+const DB_KEY  = 'materials';
+const LS_BASE = 'gestao3d_materials';
 
 const MaterialContext = createContext<MaterialContextType | null>(null);
 
 export function MaterialProvider({ children }: { children: ReactNode }) {
-  const [materials, setMaterials] = useState<Material[]>(() => {
-    try {
-      const stored = localStorage.getItem(LS_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as Material[];
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch { /* ignora */ }
-    return [];
-  });
+  const { tenant } = useTenant();
+  const tenantId   = tenant?.id ?? null;
 
-  // ── Sincroniza com Supabase na montagem ─────────────────────────────────────
+  const [materials, setMaterials] = useState<Material[]>([]);
+
+  const lsKey = tenantId ? `${LS_BASE}_${tenantId}` : null;
+
   useEffect(() => {
+    if (!tenantId) { setMaterials([]); return; }
+
+    setMaterials([]);
+
     dbGet<Material[]>(DB_KEY).then((remoto) => {
       if (remoto && Array.isArray(remoto) && remoto.length > 0) {
         setMaterials(remoto);
-        localStorage.setItem(LS_KEY, JSON.stringify(remoto));
-      } else {
-        const local = localStorage.getItem(LS_KEY);
-        if (local) {
-          const dados = JSON.parse(local) as Material[];
-          if (dados.length > 0) dbSet(DB_KEY, dados).catch(console.error);
-        }
+        if (lsKey) localStorage.setItem(lsKey, JSON.stringify(remoto));
+      } else if (lsKey) {
+        try {
+          const stored = localStorage.getItem(lsKey);
+          if (stored) {
+            const cached = JSON.parse(stored) as Material[];
+            if (Array.isArray(cached) && cached.length > 0) {
+              setMaterials(cached);
+              dbSet(DB_KEY, cached).catch(console.error);
+            }
+          }
+        } catch { /* ignora */ }
       }
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tenantId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const persist = (next: Material[]) => {
-    localStorage.setItem(LS_KEY, JSON.stringify(next));
+    if (lsKey) localStorage.setItem(lsKey, JSON.stringify(next));
     dbSet(DB_KEY, next).catch(console.error);
     return next;
   };
 
   const addMaterial = useCallback((m: Material) => {
     setMaterials((prev) => persist([m, ...prev]));
-  }, []);
+  }, [lsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateMaterial = useCallback((id: number, updates: Partial<Material>) => {
     setMaterials((prev) =>
       persist(prev.map((m) => (m.id === id ? { ...m, ...updates } : m)))
     );
-  }, []);
+  }, [lsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const removeMaterial = useCallback((id: number) => {
     setMaterials((prev) => persist(prev.filter((m) => m.id !== id)));
-  }, []);
+  }, [lsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <MaterialContext.Provider value={{ materials, addMaterial, updateMaterial, removeMaterial }}>

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import { dbGet, dbSet } from '@/lib/db';
+import { useTenant }    from '@/contexts/TenantContext';
 import type {
   AcessorioEstoque, AcessorioMovimento, AcessorioVariante,
   AcessorioContextType,
@@ -73,38 +74,47 @@ const INITIAL_ACESSORIOS: AcessorioEstoque[] = [
 ];
 
 // ─── Context ──────────────────────────────────────────────────────────────────
-const LS_KEY = 'gestao3d_acessorios';
-const DB_KEY = 'acessorios';
+const LS_BASE = 'gestao3d_acessorios';
+const DB_KEY  = 'acessorios';
 const AcessorioContext = createContext<AcessorioContextType | null>(null);
 
 export function AcessorioProvider({ children }: { children: ReactNode }) {
-  const [acessorios, setAcessorios] = useState<AcessorioEstoque[]>(() => {
-    try {
-      const stored = localStorage.getItem(LS_KEY);
-      return stored ? JSON.parse(stored) : INITIAL_ACESSORIOS;
-    } catch {
-      return INITIAL_ACESSORIOS;
-    }
-  });
+  const { tenant }  = useTenant();
+  const tenantId    = tenant?.id ?? null;
+  const lsKey       = tenantId ? `${LS_BASE}_${tenantId}` : null;
+
+  // Empresa nova começa sem dados de demonstração — tudo zerado
+  const [acessorios, setAcessorios] = useState<AcessorioEstoque[]>([]);
 
   useEffect(() => {
+    if (!tenantId) { setAcessorios([]); return; }
+
+    setAcessorios([]);
+
     dbGet<AcessorioEstoque[]>(DB_KEY).then((remoto) => {
       if (remoto && Array.isArray(remoto) && remoto.length > 0) {
         setAcessorios(remoto);
-        localStorage.setItem(LS_KEY, JSON.stringify(remoto));
-      } else {
-        const local = localStorage.getItem(LS_KEY);
-        const dados = local ? JSON.parse(local) : INITIAL_ACESSORIOS;
-        dbSet(DB_KEY, dados).catch(console.error);
+        if (lsKey) localStorage.setItem(lsKey, JSON.stringify(remoto));
+      } else if (lsKey) {
+        try {
+          const stored = localStorage.getItem(lsKey);
+          if (stored) {
+            const cached = JSON.parse(stored) as AcessorioEstoque[];
+            if (Array.isArray(cached) && cached.length > 0) {
+              setAcessorios(cached);
+              dbSet(DB_KEY, cached).catch(console.error);
+            }
+          }
+        } catch { /* ignora */ }
       }
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tenantId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const persist = useCallback((next: AcessorioEstoque[]) => {
-    localStorage.setItem(LS_KEY, JSON.stringify(next));
+    if (lsKey) localStorage.setItem(lsKey, JSON.stringify(next));
     dbSet(DB_KEY, next).catch(console.error);
     return next;
-  }, []);
+  }, [lsKey]);
 
   const addAcessorio = useCallback(
     (a: Omit<AcessorioEstoque, 'id' | 'movimentacoes'>) => {

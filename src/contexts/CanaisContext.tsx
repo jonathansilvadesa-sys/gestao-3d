@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import { CANAIS_VENDA, type CanalVenda } from '@/types';
+import { useTenant } from '@/contexts/TenantContext';
 
 // ─── Tipos do contexto ────────────────────────────────────────────────────────
 interface CanaisContextType {
@@ -10,43 +11,68 @@ interface CanaisContextType {
   resetCanais: () => void;
 }
 
-const CanaisContext = createContext<CanaisContextType | null>(null);
-
-const STORAGE_KEY = 'gestao3d_canais';
+const CanaisContext  = createContext<CanaisContextType | null>(null);
+const LS_BASE        = 'gestao3d_canais';
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 export function CanaisProvider({ children }: { children: ReactNode }) {
-  const [canais, setCanais] = useState<CanalVenda[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as CanalVenda[];
-        // garante que novos campos do default estejam presentes
-        return parsed.length > 0 ? parsed : CANAIS_VENDA;
-      }
-    } catch { /* ignora */ }
-    return CANAIS_VENDA;
-  });
+  const { tenant } = useTenant();
+  const tenantId   = tenant?.id ?? null;
+  const lsKey      = tenantId ? `${LS_BASE}_${tenantId}` : null;
+
+  // Começa com os canais padrão; recarrega quando tenant muda
+  const [canais, setCanais] = useState<CanalVenda[]>(CANAIS_VENDA);
+
+  useEffect(() => {
+    if (!tenantId) { setCanais(CANAIS_VENDA); return; }
+
+    // Tenta carregar configuração de canais deste tenant
+    if (lsKey) {
+      try {
+        const stored = localStorage.getItem(lsKey);
+        if (stored) {
+          const parsed = JSON.parse(stored) as CanalVenda[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setCanais(parsed);
+            return;
+          }
+        }
+      } catch { /* ignora */ }
+    }
+    // Novo tenant → canais padrão
+    setCanais(CANAIS_VENDA);
+  }, [tenantId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const persist = useCallback((next: CanalVenda[]) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    if (lsKey) localStorage.setItem(lsKey, JSON.stringify(next));
     setCanais(next);
-  }, []);
+  }, [lsKey]);
 
   const addCanal = useCallback((c: Omit<CanalVenda, 'id'>) => {
     const id = `canal_${Date.now()}`;
-    persist([...canais, { ...c, id }]);
-  }, [canais, persist]);
+    setCanais((prev) => {
+      const next = [...prev, { ...c, id }];
+      if (lsKey) localStorage.setItem(lsKey, JSON.stringify(next));
+      return next;
+    });
+  }, [lsKey]);
 
   const updateCanal = useCallback((id: string, updates: Partial<Omit<CanalVenda, 'id'>>) => {
-    persist(canais.map((c) => c.id === id ? { ...c, ...updates } : c));
-  }, [canais, persist]);
+    setCanais((prev) => {
+      const next = prev.map((c) => c.id === id ? { ...c, ...updates } : c);
+      if (lsKey) localStorage.setItem(lsKey, JSON.stringify(next));
+      return next;
+    });
+  }, [lsKey]);
 
   const removeCanal = useCallback((id: string) => {
-    // Impede remoção se só restar 1 canal
-    if (canais.length <= 1) return;
-    persist(canais.filter((c) => c.id !== id));
-  }, [canais, persist]);
+    setCanais((prev) => {
+      if (prev.length <= 1) return prev;
+      const next = prev.filter((c) => c.id !== id);
+      if (lsKey) localStorage.setItem(lsKey, JSON.stringify(next));
+      return next;
+    });
+  }, [lsKey]);
 
   const resetCanais = useCallback(() => {
     persist(CANAIS_VENDA);

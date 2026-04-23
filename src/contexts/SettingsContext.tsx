@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { dbGet, dbSet } from '@/lib/db';
+import { useTenant }    from '@/contexts/TenantContext';
 import type { AppSettings, SettingsContextType, PrinterProfile } from '@/types';
 
 // ─── Padrões globais ──────────────────────────────────────────────────────────
@@ -25,87 +26,114 @@ export const DEFAULT_SETTINGS: AppSettings = {
   faturamentoMesRef:    '',
 };
 
-const LS_SETTINGS  = 'gestao3d_settings';
-const LS_PRINTERS  = 'gestao3d_printers_custom';
-const LS_OVERRIDES = 'gestao3d_printers_overrides';
+const LS_SETTINGS_BASE  = 'gestao3d_settings';
+const LS_PRINTERS_BASE  = 'gestao3d_printers_custom';
+const LS_OVERRIDES_BASE = 'gestao3d_printers_overrides';
 
 const SettingsContext = createContext<SettingsContextType | null>(null);
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<AppSettings>(() => {
-    try {
-      const s = localStorage.getItem(LS_SETTINGS);
-      return s ? { ...DEFAULT_SETTINGS, ...JSON.parse(s) } : DEFAULT_SETTINGS;
-    } catch { return DEFAULT_SETTINGS; }
-  });
+  const { tenant } = useTenant();
+  const tenantId   = tenant?.id ?? null;
 
-  const [customPrinters, setCustomPrinters] = useState<PrinterProfile[]>(() => {
-    try {
-      const s = localStorage.getItem(LS_PRINTERS);
-      return s ? JSON.parse(s) : [];
-    } catch { return []; }
-  });
+  // Chaves de localStorage isoladas por tenant
+  const lsSettings  = tenantId ? `${LS_SETTINGS_BASE}_${tenantId}`  : null;
+  const lsPrinters  = tenantId ? `${LS_PRINTERS_BASE}_${tenantId}`  : null;
+  const lsOverrides = tenantId ? `${LS_OVERRIDES_BASE}_${tenantId}` : null;
 
-  const [printerOverrides, setPrinterOverrides] = useState<Record<string, Partial<PrinterProfile>>>(() => {
-    try {
-      const s = localStorage.getItem(LS_OVERRIDES);
-      return s ? JSON.parse(s) : {};
-    } catch { return {}; }
-  });
+  // Sempre começa com os defaults — dados carregados do Supabase no useEffect
+  const [settings,        setSettings]        = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [customPrinters,  setCustomPrinters]  = useState<PrinterProfile[]>([]);
+  const [printerOverrides, setPrinterOverrides] = useState<Record<string, Partial<PrinterProfile>>>({});
 
   // Refs para leitura síncrona nos callbacks sem causar re-render
   const sRef  = useRef(settings);
   const cpRef = useRef(customPrinters);
   const poRef = useRef(printerOverrides);
-  useEffect(() => { sRef.current  = settings;        }, [settings]);
-  useEffect(() => { cpRef.current = customPrinters;  }, [customPrinters]);
+  useEffect(() => { sRef.current  = settings;         }, [settings]);
+  useEffect(() => { cpRef.current = customPrinters;   }, [customPrinters]);
   useEffect(() => { poRef.current = printerOverrides; }, [printerOverrides]);
 
-  // ── Sincroniza com Supabase na montagem ─────────────────────────────────────
+  // ── Recarrega quando o tenant muda ─────────────────────────────────────────
   useEffect(() => {
-    // Carrega cada chave independentemente
+    if (!tenantId) {
+      setSettings(DEFAULT_SETTINGS);
+      setCustomPrinters([]);
+      setPrinterOverrides({});
+      return;
+    }
+
+    // Reseta para defaults antes de carregar o novo tenant
+    setSettings(DEFAULT_SETTINGS);
+    setCustomPrinters([]);
+    setPrinterOverrides({});
+
     dbGet<AppSettings>('settings').then((remoto) => {
       if (remoto) {
         const merged = { ...DEFAULT_SETTINGS, ...remoto };
         setSettings(merged);
-        localStorage.setItem(LS_SETTINGS, JSON.stringify(merged));
-      } else {
-        dbSet('settings', sRef.current).catch(console.error);
+        if (lsSettings) localStorage.setItem(lsSettings, JSON.stringify(merged));
+      } else if (lsSettings) {
+        // Tenta cache local deste tenant
+        try {
+          const s = localStorage.getItem(lsSettings);
+          if (s) {
+            const cached = { ...DEFAULT_SETTINGS, ...JSON.parse(s) };
+            setSettings(cached);
+            dbSet('settings', cached).catch(console.error);
+          }
+        } catch { /* ignora */ }
       }
     });
 
     dbGet<PrinterProfile[]>('custom_printers').then((remoto) => {
       if (remoto && Array.isArray(remoto)) {
         setCustomPrinters(remoto);
-        localStorage.setItem(LS_PRINTERS, JSON.stringify(remoto));
-      } else {
-        if (cpRef.current.length > 0)
-          dbSet('custom_printers', cpRef.current).catch(console.error);
+        if (lsPrinters) localStorage.setItem(lsPrinters, JSON.stringify(remoto));
+      } else if (lsPrinters) {
+        try {
+          const s = localStorage.getItem(lsPrinters);
+          if (s) {
+            const cached = JSON.parse(s) as PrinterProfile[];
+            if (Array.isArray(cached) && cached.length > 0) {
+              setCustomPrinters(cached);
+              dbSet('custom_printers', cached).catch(console.error);
+            }
+          }
+        } catch { /* ignora */ }
       }
     });
 
     dbGet<Record<string, Partial<PrinterProfile>>>('printer_overrides').then((remoto) => {
       if (remoto && typeof remoto === 'object') {
         setPrinterOverrides(remoto);
-        localStorage.setItem(LS_OVERRIDES, JSON.stringify(remoto));
-      } else {
-        if (Object.keys(poRef.current).length > 0)
-          dbSet('printer_overrides', poRef.current).catch(console.error);
+        if (lsOverrides) localStorage.setItem(lsOverrides, JSON.stringify(remoto));
+      } else if (lsOverrides) {
+        try {
+          const s = localStorage.getItem(lsOverrides);
+          if (s) {
+            const cached = JSON.parse(s) as Record<string, Partial<PrinterProfile>>;
+            if (Object.keys(cached).length > 0) {
+              setPrinterOverrides(cached);
+              dbSet('printer_overrides', cached).catch(console.error);
+            }
+          }
+        } catch { /* ignora */ }
       }
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tenantId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Helpers de persistência ──────────────────────────────────────────────────
   const persistSettings = (next: AppSettings) => {
-    localStorage.setItem(LS_SETTINGS, JSON.stringify(next));
+    if (lsSettings) localStorage.setItem(lsSettings, JSON.stringify(next));
     dbSet('settings', next).catch(console.error);
   };
   const persistPrinters = (next: PrinterProfile[]) => {
-    localStorage.setItem(LS_PRINTERS, JSON.stringify(next));
+    if (lsPrinters) localStorage.setItem(lsPrinters, JSON.stringify(next));
     dbSet('custom_printers', next).catch(console.error);
   };
   const persistOverrides = (next: Record<string, Partial<PrinterProfile>>) => {
-    localStorage.setItem(LS_OVERRIDES, JSON.stringify(next));
+    if (lsOverrides) localStorage.setItem(lsOverrides, JSON.stringify(next));
     dbSet('printer_overrides', next).catch(console.error);
   };
 

@@ -1,9 +1,10 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import { dbGet, dbSet } from '@/lib/db';
+import { useTenant }    from '@/contexts/TenantContext';
 import type { HardwarePeca, HardwareContextType } from '@/types';
 
-const LS_KEY = 'gestao3d_hardware';
-const DB_KEY = 'hardware';
+const LS_BASE = 'gestao3d_hardware';
+const DB_KEY  = 'hardware';
 
 function makeId() {
   return `hw_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -12,35 +13,41 @@ function makeId() {
 const HardwareContext = createContext<HardwareContextType | null>(null);
 
 export function HardwareProvider({ children }: { children: ReactNode }) {
-  const [pecas, setPecas] = useState<HardwarePeca[]>(() => {
-    try {
-      const stored = localStorage.getItem(LS_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  const { tenant } = useTenant();
+  const tenantId   = tenant?.id ?? null;
+  const lsKey      = tenantId ? `${LS_BASE}_${tenantId}` : null;
+
+  const [pecas, setPecas] = useState<HardwarePeca[]>([]);
 
   useEffect(() => {
+    if (!tenantId) { setPecas([]); return; }
+
+    setPecas([]);
+
     dbGet<HardwarePeca[]>(DB_KEY).then((remoto) => {
       if (remoto && Array.isArray(remoto) && remoto.length > 0) {
         setPecas(remoto);
-        localStorage.setItem(LS_KEY, JSON.stringify(remoto));
-      } else {
-        const local = localStorage.getItem(LS_KEY);
-        if (local) {
-          const dados = JSON.parse(local) as HardwarePeca[];
-          if (dados.length > 0) dbSet(DB_KEY, dados).catch(console.error);
-        }
+        if (lsKey) localStorage.setItem(lsKey, JSON.stringify(remoto));
+      } else if (lsKey) {
+        try {
+          const stored = localStorage.getItem(lsKey);
+          if (stored) {
+            const cached = JSON.parse(stored) as HardwarePeca[];
+            if (Array.isArray(cached) && cached.length > 0) {
+              setPecas(cached);
+              dbSet(DB_KEY, cached).catch(console.error);
+            }
+          }
+        } catch { /* ignora */ }
       }
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tenantId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const persist = useCallback((next: HardwarePeca[]) => {
-    localStorage.setItem(LS_KEY, JSON.stringify(next));
+    if (lsKey) localStorage.setItem(lsKey, JSON.stringify(next));
     dbSet(DB_KEY, next).catch(console.error);
     return next;
-  }, []);
+  }, [lsKey]);
 
   const addPeca = useCallback((p: Omit<HardwarePeca, 'id'>) => {
     setPecas((prev) => persist([...prev, { ...p, id: makeId() }]));

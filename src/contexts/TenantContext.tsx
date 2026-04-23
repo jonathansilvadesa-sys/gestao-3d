@@ -149,10 +149,7 @@ export function TenantProvider({ children }: Props) {
 
       if (fetchErr || !newTenant) return fetchErr?.message ?? 'Erro ao carregar empresa criada';
 
-      // 3. Migra dados legados (user_id → tenant_id)
-      await migrateUserDataToTenant(userId, newTenantId);
-
-      // 4. Atualiza contexto local
+      // 3. Atualiza contexto local
       const t = mapTenant(newTenant as Record<string, unknown>);
       setTenant(t);
       setMyRole('owner');
