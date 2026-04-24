@@ -3,18 +3,20 @@ import { Badge } from '@/components/shared/Badge';
 import { R, COLORS } from '@/utils/formatters';
 import { exportarRelatorioPDF } from '@/utils/exportPdf';
 import type { Product } from '@/types';
-import { useCanais } from '@/contexts/CanaisContext';
+import { useCanais }       from '@/contexts/CanaisContext';
+import { usePermissions }  from '@/contexts/PermissionsContext';
 
 interface Props {
   products: Product[];
   onSelect: (p: Product) => void;
-  onEdit: (p: Product) => void;
-  onRemove: (id: number) => void;
+  onEdit?: (p: Product) => void;
+  onRemove?: (id: number) => void;
   onImport?: () => void;
 }
 
 export function ProductsTab({ products, onSelect, onEdit, onRemove, onImport }: Props) {
-  const { canais } = useCanais();
+  const { canais }  = useCanais();
+  const { can }     = usePermissions();
   const [search, setSearch] = useState('');
   const [exporting, setExporting] = useState(false);
   const filtered = products.filter((p) => p.nome.toLowerCase().includes(search.toLowerCase()));
@@ -36,7 +38,7 @@ export function ProductsTab({ products, onSelect, onEdit, onRemove, onImport }: 
           className="border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 w-full sm:w-44 order-3 sm:order-none"
         />
         {/* Botão importar planilha */}
-        {onImport && (
+        {onImport && can('import_export_data') && (
           <button
             onClick={onImport}
             title="Importar produtos de planilha Excel/CSV"
@@ -50,7 +52,7 @@ export function ProductsTab({ products, onSelect, onEdit, onRemove, onImport }: 
             <span className="hidden sm:inline">Importar</span>
           </button>
         )}
-        <button
+        {can('export_pdf') && <button
           onClick={handleExport}
           disabled={exporting || products.length === 0}
           className="flex items-center gap-2 border border-gray-200 text-gray-600 text-sm font-semibold px-3 py-2 rounded-xl hover:bg-gray-50 disabled:opacity-50 transition"
@@ -67,7 +69,7 @@ export function ProductsTab({ products, onSelect, onEdit, onRemove, onImport }: 
             </svg>
           )}
           PDF
-        </button>
+        </button>}
       </div>
 
       {/* Empty state — sem produtos */}
@@ -150,20 +152,24 @@ export function ProductsTab({ products, onSelect, onEdit, onRemove, onImport }: 
                 <td className="px-4 py-3 font-bold text-emerald-600">{R(p.lucroLiquidoConsumidor)}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => onEdit(p)}
-                      title="Editar peça"
-                      className="w-8 h-8 rounded-lg bg-indigo-50 hover:bg-indigo-100 flex items-center justify-center transition"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => { if (confirm(`Remover "${p.nome}"?`)) onRemove(p.id); }}
-                      className="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center transition text-red-400 hover:text-red-600 font-bold text-lg"
-                    >×</button>
+                    {onEdit && (
+                      <button
+                        onClick={() => onEdit(p)}
+                        title="Editar peça"
+                        className="w-8 h-8 rounded-lg bg-indigo-50 hover:bg-indigo-100 flex items-center justify-center transition"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                    )}
+                    {onRemove && (
+                      <button
+                        onClick={() => { if (confirm(`Remover "${p.nome}"?`)) onRemove(p.id); }}
+                        className="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center transition text-red-400 hover:text-red-600 font-bold text-lg"
+                      >×</button>
+                    )}
                   </div>
                 </td>
               </tr>

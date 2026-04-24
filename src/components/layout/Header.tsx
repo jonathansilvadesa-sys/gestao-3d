@@ -1,11 +1,12 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { useAuth }      from '@/contexts/AuthContext';
-import { useAcessorios } from '@/contexts/AcessorioContext';
-import { useMaterials }  from '@/contexts/MaterialContext';
-import { useTheme }      from '@/contexts/ThemeContext';
-import { useHardware }   from '@/contexts/HardwareContext';
-import { SettingsModal } from '@/components/settings/SettingsModal';
-import { DeveloperBadge } from '@/components/admin/DeveloperPanel';
+import { useAuth }         from '@/contexts/AuthContext';
+import { useAcessorios }   from '@/contexts/AcessorioContext';
+import { useMaterials }    from '@/contexts/MaterialContext';
+import { useTheme }        from '@/contexts/ThemeContext';
+import { useHardware }     from '@/contexts/HardwareContext';
+import { usePermissions }  from '@/contexts/PermissionsContext';
+import { SettingsModal }   from '@/components/settings/SettingsModal';
+import { DeveloperBadge }  from '@/components/admin/DeveloperPanel';
 import type { AppTab } from '@/types';
 
 interface HeaderProps {
@@ -31,6 +32,7 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
   const { materials }          = useMaterials();
   const { theme, toggleTheme } = useTheme();
   const { getAlertasEstoque: hwEstoque, getAlertasHoras: hwHoras } = useHardware();
+  const { can }                = usePermissions();
 
   const [showSettings,  setShowSettings]  = useState(false);
   const [showUserMenu,  setShowUserMenu]  = useState(false);
@@ -358,13 +360,15 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
             </div>
 
             {/* ── Configurações — oculto no mobile ─────────────────── */}
-            <button
-              onClick={() => setShowSettings(true)}
-              title="Configurações globais"
-              className="hidden sm:flex w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 items-center justify-center transition text-gray-500 dark:text-gray-300"
-            >
-              ⚙️
-            </button>
+            {can('manage_settings') && (
+              <button
+                onClick={() => setShowSettings(true)}
+                title="Configurações globais"
+                className="hidden sm:flex w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 items-center justify-center transition text-gray-500 dark:text-gray-300"
+              >
+                ⚙️
+              </button>
+            )}
 
             {/* ── Nova Peça — oculto no mobile (disponível no FAB) ───── */}
             <button
@@ -416,10 +420,12 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
                       Painel Dev
                     </button>
                   )}
-                  <button
-                    onClick={() => { setShowSettings(true); setShowUserMenu(false); }}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition"
-                  >⚙️ Configurações</button>
+                  {can('manage_settings') && (
+                    <button
+                      onClick={() => { setShowSettings(true); setShowUserMenu(false); }}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition"
+                    >⚙️ Configurações</button>
+                  )}
                   {/* Tema — visível apenas no mobile (desktop tem botão próprio) */}
                   <button
                     onClick={() => { toggleTheme(); setShowUserMenu(false); }}

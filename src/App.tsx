@@ -7,6 +7,7 @@ import { useAcessorios }     from '@/contexts/AcessorioContext';
 import { useMaterials }      from '@/contexts/MaterialContext';
 import { useToast }          from '@/contexts/ToastContext';
 import { useTour }           from '@/contexts/TourContext';
+import { usePermissions }    from '@/contexts/PermissionsContext';
 import { LoginPage }         from '@/components/auth/LoginPage';
 import { SignupPage }        from '@/components/auth/SignupPage';
 import { OnboardingTenant }  from '@/components/auth/OnboardingTenant';
@@ -41,6 +42,7 @@ export default function App() {
   const { materials, updateMaterial }                           = useMaterials();
   const { addToast }                                            = useToast();
   const { startTour, tourCompleted, registerNavigate }          = useTour();
+  const { can }                                                 = usePermissions();
 
   const [authView, setAuthView]          = useState<'login' | 'signup'>('login');
   const [tab, setTab]                   = useState<AppTab>('dashboard');
@@ -131,7 +133,7 @@ export default function App() {
         tab={tab}
         setTab={setTab}
         totalEstoque={totalEstoque}
-        onNovaPeca={() => setShowNova(true)}
+        onNovaPeca={can('manage_products') ? () => setShowNova(true) : () => {}}
         onSearch={() => setShowSearch(true)}
         breakEvenCount={breakEvenCount}
       />
@@ -155,9 +157,9 @@ export default function App() {
           <ProductsTab
             products={products}
             onSelect={setSelected}
-            onEdit={setEditingProduct}
-            onRemove={removeProduct}
-            onImport={() => setShowImport(true)}
+            onEdit={can('manage_products') ? setEditingProduct : undefined}
+            onRemove={can('manage_products') ? removeProduct : () => {}}
+            onImport={can('import_export_data') ? () => setShowImport(true) : undefined}
           />
         )}
             {tab === 'materiais' && <MateriaisTab />}
@@ -315,7 +317,7 @@ export default function App() {
             }}
 
             // ── Ajuste manual: seta diretamente, sem gatilhos de insumos ─────
-            onAjustar={(id, qty) => {
+            onAjustar={can('adjust_stock') ? (id, qty) => {
               const product = products.find((p) => p.id === id);
               if (!product) return;
               const mov: EstoqueMovimento = {
@@ -329,7 +331,7 @@ export default function App() {
                 estoque: Math.max(0, qty),
                 movimentosEstoque: [mov, ...(product.movimentosEstoque ?? [])].slice(0, 50),
               });
-            }}
+            } : undefined}
             />
           )}
           </div>

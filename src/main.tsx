@@ -11,7 +11,8 @@ import { ThemeProvider }     from '@/contexts/ThemeContext';
 import { HardwareProvider }  from '@/contexts/HardwareContext';
 import { PedidosProvider }   from '@/contexts/PedidosContext';
 import { ToastProvider }     from '@/contexts/ToastContext';
-import { TourProvider }      from '@/contexts/TourContext';
+import { TourProvider }         from '@/contexts/TourContext';
+import { PermissionsProvider }  from '@/contexts/PermissionsContext';
 import './index.css';
 import App from './App';
 import { flushOfflineQueue } from '@/lib/db';
@@ -45,9 +46,11 @@ createRoot(document.getElementById('root')!).render(
                     <HardwareProvider>
                       <PedidosProvider>
                         <ToastProvider>
+                          <PermissionsProvider>
                           <TourProvider>
                             <App />
                           </TourProvider>
+                        </PermissionsProvider>
                         </ToastProvider>
                       </PedidosProvider>
                     </HardwareProvider>

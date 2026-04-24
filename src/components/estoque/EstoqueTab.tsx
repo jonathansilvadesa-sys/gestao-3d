@@ -20,7 +20,7 @@ interface Props {
   products: Product[];
   onProduzir: (id: number, qty: number) => void;
   onVender:   (id: number, qty: number) => void;
-  onAjustar:  (id: number, qty: number) => void;
+  onAjustar?: (id: number, qty: number) => void;
   onFalha:    (id: number, qty: number) => void;
 }
 
@@ -108,7 +108,7 @@ export function EstoqueTab({ products, onProduzir, onVender, onAjustar, onFalha 
 
     if (e.acao === 'producao') onProduzir(product.id, qty);
     else if (e.acao === 'venda') onVender(product.id, qty);
-    else if (e.acao === 'ajuste') onAjustar(product.id, qty);
+    else if (e.acao === 'ajuste') onAjustar?.(product.id, qty);
     else if (e.acao === 'falha') onFalha(product.id, qty);
 
     fechar(product.id);
@@ -294,19 +294,21 @@ export function EstoqueTab({ products, onProduzir, onVender, onAjustar, onFalha 
                     <span>Falha</span>
                   </button>
 
-                  {/* Ajuste manual */}
-                  <button
-                    onClick={() => setEstado(p.id, acaoAtiva === 'ajuste' ? null : 'ajuste', String(estoque))}
-                    title="Ajuste manual de inventário"
-                    className={`col-span-1 flex flex-col items-center gap-1 py-3 rounded-xl text-xs font-bold transition active:scale-95 ${
-                      acaoAtiva === 'ajuste'
-                        ? 'bg-gray-600 text-white'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200'
-                    }`}
-                  >
-                    <IconAjuste />
-                    <span>Ajuste</span>
-                  </button>
+                  {/* Ajuste manual — só visível se o usuário tem permissão */}
+                  {onAjustar && (
+                    <button
+                      onClick={() => setEstado(p.id, acaoAtiva === 'ajuste' ? null : 'ajuste', String(estoque))}
+                      title="Ajuste manual de inventário"
+                      className={`col-span-1 flex flex-col items-center gap-1 py-3 rounded-xl text-xs font-bold transition active:scale-95 ${
+                        acaoAtiva === 'ajuste'
+                          ? 'bg-gray-600 text-white'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200'
+                      }`}
+                    >
+                      <IconAjuste />
+                      <span>Ajuste</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* ── Painel de ação inline ──────────────────────────────── */}

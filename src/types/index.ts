@@ -406,6 +406,68 @@ export interface TenantContextType {
   migrateExistingData: () => Promise<void>;
 }
 
+// ─── Permissões por role (v3.9) ──────────────────────────────────────────────
+// Cada permissão controla uma funcionalidade específica da aplicação.
+// owner e developer sempre têm tudo — a matriz só configura admin e operador.
+export type Permission =
+  | 'view_dashboard'        // Ver aba Dashboard
+  | 'view_financial'        // Ver valores financeiros (custos, lucros, faturamento)
+  | 'manage_products'       // Criar / editar / excluir peças
+  | 'view_costs'            // Ver custos unitários e margens
+  | 'import_export_data'    // Importar/exportar Excel
+  | 'manage_stock'          // Registrar produção, vendas e falhas
+  | 'adjust_stock'          // Ajuste manual de estoque
+  | 'manage_materials'      // Gerenciar filamentos, acessórios e hardware
+  | 'manage_settings'       // Alterar configurações da empresa
+  | 'manage_printers'       // Gerenciar impressoras
+  | 'export_pdf'            // Exportar relatórios PDF
+  | 'view_reports';         // Ver relatórios e histórico detalhado
+
+// Roles que têm permissões configuráveis (owner e developer sempre têm tudo)
+export type ConfigurableRole = 'admin' | 'operador';
+
+export type RolePermissions = Record<Permission, boolean>;
+export type PermissionMatrix = Record<ConfigurableRole, RolePermissions>;
+
+// Padrões de fábrica — admin quase tudo, operador só operações básicas
+export const DEFAULT_PERMISSION_MATRIX: PermissionMatrix = {
+  admin: {
+    view_dashboard:    true,
+    view_financial:    true,
+    manage_products:   true,
+    view_costs:        true,
+    import_export_data: true,
+    manage_stock:      true,
+    adjust_stock:      true,
+    manage_materials:  true,
+    manage_settings:   false,
+    manage_printers:   true,
+    export_pdf:        true,
+    view_reports:      true,
+  },
+  operador: {
+    view_dashboard:    true,
+    view_financial:    false,
+    manage_products:   false,
+    view_costs:        false,
+    import_export_data: false,
+    manage_stock:      true,
+    adjust_stock:      false,
+    manage_materials:  true,
+    manage_settings:   false,
+    manage_printers:   false,
+    export_pdf:        false,
+    view_reports:      false,
+  },
+};
+
+export interface PermissionsContextType {
+  matrix: PermissionMatrix;
+  can: (permission: Permission) => boolean;
+  updateMatrix: (newMatrix: PermissionMatrix) => Promise<void>;
+  permissionsLoading: boolean;
+}
+
 // ─── Tabs da aplicação ────────────────────────────────────────────────────────
 export type AppTab = 'dashboard' | 'produtos' | 'estoque' | 'materiais' | 'pedidos';
 

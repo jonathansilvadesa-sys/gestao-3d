@@ -3,18 +3,21 @@
  * Visível para usuários com role 'developer' (user_metadata ou tenant_membership).
  *
  * Abas:
- *  - Empresas  : lista todos os tenants, abre gestão de membros por empresa
- *  - Convites  : gera / copia / exclui códigos de convite
+ *  - Empresas    : lista todos os tenants, abre gestão de membros por empresa
+ *  - Permissões  : matriz de permissões por role (admin / operador)
+ *  - Convites    : gera / copia / exclui códigos de convite
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useTenant } from '@/contexts/TenantContext';
-import { useAuth }   from '@/contexts/AuthContext';
-import { supabase }  from '@/lib/supabase';
-import type { Invite } from '@/types';
+import { useTenant }       from '@/contexts/TenantContext';
+import { useAuth }         from '@/contexts/AuthContext';
+import { usePermissions }  from '@/contexts/PermissionsContext';
+import { supabase }        from '@/lib/supabase';
+import type { Invite, Permission, PermissionMatrix, ConfigurableRole } from '@/types';
+import { DEFAULT_PERMISSION_MATRIX } from '@/types';
 
 // ── Tipos internos ────────────────────────────────────────────────────────────
-type PanelTab = 'tenants' | 'invites';
+type PanelTab = 'tenants' | 'permissions' | 'invites';
 
 interface TenantStat {
   id: string; nome: string; slug: string; plano: string;
@@ -38,9 +41,15 @@ interface DeveloperBadgeProps {
 export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBadgeProps = {}) {
   const { user }                                                    = useAuth();
   const { myRole, tenant, allTenants, switchTenant, createTenant } = useTenant();
+  const { matrix, updateMatrix }                                    = usePermissions();
 
   const [open,       setOpen]       = useState(false);
   const [panelTab,   setPanelTab]   = useState<PanelTab>('tenants');
+
+  // ── Permissões ────────────────────────────────────────────────────────────
+  const [localMatrix,  setLocalMatrix]  = useState<PermissionMatrix>(DEFAULT_PERMISSION_MATRIX);
+  const [permSaving,   setPermSaving]   = useState(false);
+  const [permSaved,    setPermSaved]    = useState(false);
 
   // ── Empresas ─────────────────────────────────────────────────────────────
   const [tenantStats,    setTenantStats]    = useState<TenantStat[]>([]);
@@ -98,6 +107,33 @@ export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBa
   useEffect(() => {
     if (open && panelTab === 'tenants') loadTenantStats();
   }, [open, panelTab, loadTenantStats]);
+
+  // Sincroniza localMatrix com o contexto ao abrir a aba de permissões
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (open && panelTab === 'permissions') {
+      setLocalMatrix(matrix);
+      setPermSaved(false);
+    }
+  }, [open, panelTab, matrix]);
+
+  // ── Salva a matriz de permissões ──────────────────────────────────────────
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const savePermissions = useCallback(async () => {
+    setPermSaving(true);
+    await updateMatrix(localMatrix);
+    setPermSaving(false);
+    setPermSaved(true);
+    setTimeout(() => setPermSaved(false), 2500);
+  }, [localMatrix, updateMatrix]);
+
+  const togglePerm = (role: ConfigurableRole, perm: Permission, value: boolean) => {
+    setLocalMatrix((prev) => ({
+      ...prev,
+      [role]: { ...prev[role], [perm]: value },
+    }));
+    setPermSaved(false);
+  };
 
   // ── Carrega membros de um tenant ──────────────────────────────────────────
   const loadMembers = useCallback(async (tenantId: string) => {
@@ -305,7 +341,7 @@ export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBa
             {/* Sub-tabs */}
             {!selectedTenant && (
               <div className="flex border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
-                {(['tenants', 'invites'] as PanelTab[]).map((t) => (
+                {(['tenants', 'permissions', 'invites'] as PanelTab[]).map((t) => (
                   <button key={t} onClick={() => setPanelTab(t)}
                     className={`flex-1 py-2.5 text-xs font-semibold transition ${
                       panelTab === t
@@ -314,7 +350,9 @@ export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBa
                     }`}>
                     {t === 'tenants'
                       ? `🏢 Empresas (${tenantStats.length})`
-                      : '🎟 Convites'}
+                      : t === 'permissions'
+                        ? '🔐 Permissões'
+                        : '🎟 Convites'}
                   </button>
                 ))}
               </div>
@@ -553,6 +591,122 @@ export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBa
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* ── ABA PERMISSÕES ────────────────────────────────────────────── */}
+            {panelTab === 'permissions' && (
+              <div className="flex flex-col flex-1 overflow-hidden">
+                {/* Cabeçalho explicativo */}
+                <div className="px-4 py-3 border-b border-gray-50 dark:border-gray-700 flex-shrink-0">
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                    Define o que cada role pode fazer <strong className="text-gray-700 dark:text-gray-200">nesta empresa</strong>.
+                    Owner e Developer sempre têm acesso total.
+                  </p>
+                </div>
+
+                {/* Matriz */}
+                <div className="overflow-y-auto flex-1 px-3 py-2">
+                  {/* Header de colunas */}
+                  <div className="grid grid-cols-[1fr_72px_72px] gap-x-2 px-2 mb-1">
+                    <div />
+                    {(['admin', 'operador'] as ConfigurableRole[]).map((r) => (
+                      <div key={r} className="text-center text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{r}</div>
+                    ))}
+                  </div>
+
+                  {/* Grupos de permissões */}
+                  {([
+                    {
+                      label: 'Dashboard & Relatórios',
+                      perms: [
+                        { key: 'view_dashboard' as Permission,   label: 'Ver Dashboard' },
+                        { key: 'view_financial'  as Permission,  label: 'Ver dados financeiros' },
+                        { key: 'view_reports'    as Permission,  label: 'Ver relatórios' },
+                        { key: 'export_pdf'      as Permission,  label: 'Exportar PDF' },
+                        { key: 'import_export_data' as Permission, label: 'Importar / Exportar Excel' },
+                      ],
+                    },
+                    {
+                      label: 'Produtos / Peças',
+                      perms: [
+                        { key: 'manage_products' as Permission, label: 'Criar / editar / excluir peças' },
+                        { key: 'view_costs'      as Permission, label: 'Ver custos e margens' },
+                      ],
+                    },
+                    {
+                      label: 'Estoque',
+                      perms: [
+                        { key: 'manage_stock'  as Permission, label: 'Produção / Venda / Falha' },
+                        { key: 'adjust_stock'  as Permission, label: 'Ajuste manual de estoque' },
+                      ],
+                    },
+                    {
+                      label: 'Materiais & Hardware',
+                      perms: [
+                        { key: 'manage_materials' as Permission, label: 'Gerenciar filamentos e hardware' },
+                      ],
+                    },
+                    {
+                      label: 'Configurações',
+                      perms: [
+                        { key: 'manage_settings'  as Permission, label: 'Alterar configurações' },
+                        { key: 'manage_printers'  as Permission, label: 'Gerenciar impressoras' },
+                      ],
+                    },
+                  ] as { label: string; perms: { key: Permission; label: string }[] }[]).map((group) => (
+                    <div key={group.label} className="mb-3">
+                      <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-2 mb-1">
+                        {group.label}
+                      </p>
+                      <div className="bg-white dark:bg-gray-750 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700">
+                        {group.perms.map((perm, idx) => (
+                          <div key={perm.key}
+                            className={`grid grid-cols-[1fr_72px_72px] gap-x-2 items-center px-3 py-2 ${
+                              idx < group.perms.length - 1 ? 'border-b border-gray-50 dark:border-gray-700' : ''
+                            }`}
+                          >
+                            <span className="text-xs text-gray-700 dark:text-gray-300 leading-tight">{perm.label}</span>
+                            {(['admin', 'operador'] as ConfigurableRole[]).map((role) => (
+                              <div key={role} className="flex justify-center">
+                                <button
+                                  onClick={() => togglePerm(role, perm.key, !localMatrix[role][perm.key])}
+                                  className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${
+                                    localMatrix[role][perm.key]
+                                      ? 'bg-indigo-500'
+                                      : 'bg-gray-200 dark:bg-gray-600'
+                                  }`}
+                                >
+                                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                                    localMatrix[role][perm.key] ? 'translate-x-4' : 'translate-x-0.5'
+                                  }`} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Botão Salvar */}
+                <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700 flex-shrink-0">
+                  <button onClick={savePermissions} disabled={permSaving}
+                    className={`w-full text-sm font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2 ${
+                      permSaved
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                        : 'bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white'
+                    }`}>
+                    {permSaving ? (
+                      <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Salvando…</>
+                    ) : permSaved ? (
+                      <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>Salvo!</>
+                    ) : (
+                      'Salvar permissões'
+                    )}
+                  </button>
+                </div>
               </div>
             )}
 
