@@ -77,10 +77,14 @@ export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBa
   const [deleting,      setDeleting]      = useState(false);
 
   // ── Convites ──────────────────────────────────────────────────────────────
-  const [invites,    setInvites]    = useState<Invite[]>([]);
-  const [invLoading, setInvLoading] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [copied,     setCopied]     = useState<string | null>(null);
+  const [invites,      setInvites]      = useState<Invite[]>([]);
+  const [invLoading,   setInvLoading]   = useState(false);
+  const [generating,   setGenerating]   = useState(false);
+  const [copied,       setCopied]       = useState<string | null>(null);
+  const [invNote,      setInvNote]      = useState('');
+  const [invTenantId,  setInvTenantId]  = useState('');
+  const [invFilter,    setInvFilter]    = useState<'all' | 'free' | 'used'>('all');
+  const [expandedInv,  setExpandedInv]  = useState<string | null>(null);
 
   // Visível se role developer em qualquer camada
   const isDeveloper = user?.role === 'developer' || myRole === 'developer';
@@ -233,13 +237,27 @@ export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBa
   // ── Convites ──────────────────────────────────────────────────────────────
   const loadInvites = useCallback(async () => {
     setInvLoading(true);
-    const { data } = await supabase.from('invites').select('*')
-      .order('criado_em', { ascending: false }).limit(20);
+    const { data } = await supabase.rpc('get_invite_stats');
     if (data) {
-      setInvites(data.map((r) => ({
-        id: r.id, code: r.code, usado: r.usado,
-        criadoPor: r.criado_por, usadoPor: r.usado_por,
-        usadoEm: r.usado_em, expiraEm: r.expira_em, criadoEm: r.criado_em,
+      setInvites((data as {
+        id: string; code: string; usado: boolean; note: string | null;
+        criado_em: string; expira_em: string | null;
+        tenant_id: string | null; tenant_nome: string | null;
+        usado_por: string | null; usado_em: string | null;
+        usuario_nome: string | null; usuario_email: string | null;
+      }[]).map((r) => ({
+        id:           r.id,
+        code:         r.code,
+        usado:        r.usado,
+        note:         r.note ?? undefined,
+        criadoEm:     r.criado_em,
+        expiraEm:     r.expira_em ?? undefined,
+        usadoPor:     r.usado_por ?? undefined,
+        usadoEm:      r.usado_em ?? undefined,
+        tenantId:     r.tenant_id ?? undefined,
+        tenantNome:   r.tenant_nome ?? undefined,
+        usuarioNome:  r.usuario_nome ?? undefined,
+        usuarioEmail: r.usuario_email ?? undefined,
       })));
     }
     setInvLoading(false);
@@ -252,11 +270,23 @@ export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBa
 
   const gerarConvite = async () => {
     setGenerating(true);
-    const { data, error } = await supabase.from('invites').insert({}).select().single();
+    const payload: Record<string, unknown> = {};
+    if (invNote.trim())   payload.note      = invNote.trim();
+    if (invTenantId)      payload.tenant_id = invTenantId;
+
+    const { data, error } = await supabase.from('invites').insert(payload).select().single();
     if (!error && data) {
+      const tenantNome = invTenantId
+        ? tenantStats.find((t) => t.id === invTenantId)?.nome
+        : undefined;
       setInvites((prev) => [{
         id: data.id, code: data.code, usado: false, criadoEm: data.criado_em,
+        note: invNote.trim() || undefined,
+        tenantId: invTenantId || undefined,
+        tenantNome,
       }, ...prev]);
+      setInvNote('');
+      setInvTenantId('');
     }
     setGenerating(false);
   };
@@ -713,16 +743,67 @@ export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBa
             {/* ── ABA CONVITES ──────────────────────────────────────────────── */}
             {panelTab === 'invites' && (
               <div className="flex flex-col flex-1 overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-50 dark:border-gray-700 flex-shrink-0">
+
+                {/* Formulário de geração */}
+                <div className="px-4 py-3 border-b border-gray-50 dark:border-gray-700 flex-shrink-0 space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={invNote}
+                      onChange={(e) => setInvNote(e.target.value)}
+                      placeholder="Rótulo (ex: para João, beta tester…)"
+                      className="flex-1 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    />
+                    <select
+                      value={invTenantId}
+                      onChange={(e) => setInvTenantId(e.target.value)}
+                      className="border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-1.5 text-xs focus:outline-none max-w-[130px]"
+                    >
+                      <option value="">🌐 Qualquer empresa</option>
+                      {tenantStats.map((t) => (
+                        <option key={t.id} value={t.id}>{t.nome}</option>
+                      ))}
+                    </select>
+                  </div>
                   <button onClick={gerarConvite} disabled={generating}
-                    className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition">
+                    className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold px-4 py-2 rounded-xl transition">
                     {generating
                       ? <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                      : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     }
-                    Gerar novo convite
+                    Gerar convite
                   </button>
                 </div>
+
+                {/* Stats rápidas */}
+                {invites.length > 0 && (
+                  <div className="px-4 py-2 border-b border-gray-50 dark:border-gray-700 flex-shrink-0 flex items-center gap-3">
+                    <span className="text-[10px] text-gray-400">
+                      <span className="font-bold text-gray-600 dark:text-gray-300">{invites.length}</span> total
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      <span className="font-bold text-emerald-600">{invites.filter((i) => !i.usado).length}</span> livres
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      <span className="font-bold text-indigo-600">{invites.filter((i) => i.usado).length}</span> usados
+                    </span>
+                    {/* Filtros */}
+                    <div className="ml-auto flex gap-1">
+                      {(['all', 'free', 'used'] as const).map((f) => (
+                        <button key={f} onClick={() => setInvFilter(f)}
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition ${
+                            invFilter === f
+                              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
+                              : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
+                          }`}>
+                          {f === 'all' ? 'Todos' : f === 'free' ? 'Livres' : 'Usados'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Lista de convites */}
                 <div className="overflow-y-auto flex-1">
                   {invLoading ? (
                     <p className="text-xs text-gray-400 text-center py-6">Carregando…</p>
@@ -730,40 +811,143 @@ export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBa
                     <p className="text-xs text-gray-400 text-center py-6">Nenhum convite gerado</p>
                   ) : (
                     <div className="p-2 space-y-1.5">
-                      {invites.map((inv) => (
-                        <div key={inv.id}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs border ${
-                            inv.usado
-                              ? 'bg-gray-50 dark:bg-gray-700/30 border-gray-100 dark:border-gray-700 opacity-60'
-                              : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800'
-                          }`}>
-                          <code className={`flex-1 font-mono font-bold tracking-widest text-sm ${
-                            inv.usado ? 'text-gray-400 line-through' : 'text-gray-700 dark:text-gray-200'
-                          }`}>{inv.code}</code>
-                          <span className={`flex-shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            inv.usado
-                              ? 'bg-gray-200 text-gray-500 dark:bg-gray-600 dark:text-gray-300'
-                              : 'bg-emerald-200 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-200'
-                          }`}>{inv.usado ? 'usado' : 'livre'}</span>
-                          {!inv.usado && (
-                            <button onClick={() => copiar(inv.code)}
-                              className="flex-shrink-0 w-6 h-6 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-800 flex items-center justify-center text-emerald-600 transition">
-                              {copied === inv.code
-                                ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                              }
-                            </button>
-                          )}
-                          <button onClick={() => deletarConvite(inv.id)}
-                            className="flex-shrink-0 w-6 h-6 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 flex items-center justify-center text-red-300 hover:text-red-500 transition">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                              <polyline points="3 6 5 6 21 6"/>
-                              <path d="M19 6l-1 14H6L5 6"/>
-                              <path d="M10 11v6M14 11v6"/>
-                            </svg>
-                          </button>
-                        </div>
-                      ))}
+                      {invites
+                        .filter((inv) =>
+                          invFilter === 'all' ? true :
+                          invFilter === 'free' ? !inv.usado : inv.usado
+                        )
+                        .map((inv) => {
+                          const isExpanded = expandedInv === inv.id;
+                          const dataUso = inv.usadoEm
+                            ? new Date(inv.usadoEm).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' })
+                            : null;
+                          const dataCriacao = new Date(inv.criadoEm).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' });
+
+                          return (
+                            <div key={inv.id}
+                              className={`rounded-xl border text-xs overflow-hidden ${
+                                inv.usado
+                                  ? 'bg-gray-50 dark:bg-gray-700/30 border-gray-100 dark:border-gray-700'
+                                  : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800'
+                              }`}>
+                              {/* Linha principal */}
+                              <div className="flex items-center gap-2 px-3 py-2">
+                                {/* Código */}
+                                <code className={`font-mono font-bold tracking-widest text-sm flex-shrink-0 ${
+                                  inv.usado ? 'text-gray-400 line-through' : 'text-gray-700 dark:text-gray-200'
+                                }`}>{inv.code}</code>
+
+                                {/* Badge status */}
+                                <span className={`flex-shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                  inv.usado
+                                    ? 'bg-gray-200 text-gray-500 dark:bg-gray-600 dark:text-gray-300'
+                                    : 'bg-emerald-200 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-200'
+                                }`}>{inv.usado ? 'usado' : 'livre'}</span>
+
+                                {/* Empresa vinculada */}
+                                {inv.tenantNome && (
+                                  <span className="flex-shrink-0 flex items-center gap-0.5 text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 rounded-full font-semibold">
+                                    🏢 {inv.tenantNome.slice(0, 12)}{inv.tenantNome.length > 12 ? '…' : ''}
+                                  </span>
+                                )}
+
+                                {/* Spacer */}
+                                <div className="flex-1" />
+
+                                {/* Botão expandir detalhes */}
+                                <button
+                                  onClick={() => setExpandedInv(isExpanded ? null : inv.id)}
+                                  className="w-5 h-5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center text-gray-400 transition"
+                                  title="Ver detalhes"
+                                >
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                                    className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                                    <polyline points="6 9 12 15 18 9"/>
+                                  </svg>
+                                </button>
+
+                                {/* Copiar (só se livre) */}
+                                {!inv.usado && (
+                                  <button onClick={() => copiar(inv.code)}
+                                    className="flex-shrink-0 w-6 h-6 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-800 flex items-center justify-center text-emerald-600 transition"
+                                    title="Copiar código">
+                                    {copied === inv.code
+                                      ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                      : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    }
+                                  </button>
+                                )}
+
+                                {/* Deletar */}
+                                <button onClick={() => deletarConvite(inv.id)}
+                                  className="flex-shrink-0 w-6 h-6 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 flex items-center justify-center text-red-300 hover:text-red-500 transition"
+                                  title="Excluir convite">
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6l-1 14H6L5 6"/>
+                                    <path d="M10 11v6M14 11v6"/>
+                                  </svg>
+                                </button>
+                              </div>
+
+                              {/* Painel expansível de detalhes */}
+                              {isExpanded && (
+                                <div className={`px-3 pb-3 space-y-1.5 border-t ${
+                                  inv.usado
+                                    ? 'border-gray-100 dark:border-gray-700'
+                                    : 'border-emerald-100 dark:border-emerald-800/50'
+                                }`}>
+                                  {/* Rótulo */}
+                                  {inv.note && (
+                                    <div className="flex items-center gap-1.5 pt-2">
+                                      <span className="text-[10px] text-gray-400 w-20 flex-shrink-0">Rótulo</span>
+                                      <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">
+                                        {inv.note}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {/* Criado em */}
+                                  <div className="flex items-center gap-1.5 pt-1">
+                                    <span className="text-[10px] text-gray-400 w-20 flex-shrink-0">Criado em</span>
+                                    <span className="text-[11px] text-gray-600 dark:text-gray-300">{dataCriacao}</span>
+                                  </div>
+
+                                  {/* Expira */}
+                                  {inv.expiraEm && (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] text-gray-400 w-20 flex-shrink-0">Expira em</span>
+                                      <span className="text-[11px] text-orange-600 dark:text-orange-300">
+                                        {new Date(inv.expiraEm).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' })}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {/* Quem usou */}
+                                  {inv.usado && (
+                                    <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 space-y-1">
+                                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Usado por</p>
+                                      <div className="flex items-center gap-2 bg-white dark:bg-gray-700 rounded-lg px-2.5 py-2">
+                                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                                          {(inv.usuarioNome || inv.usuarioEmail || '?')[0]?.toUpperCase()}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 truncate">
+                                            {inv.usuarioNome || '(sem nome)'}
+                                          </p>
+                                          <p className="text-[10px] text-gray-400 truncate">{inv.usuarioEmail}</p>
+                                        </div>
+                                        {dataUso && (
+                                          <span className="text-[10px] text-gray-400 flex-shrink-0">{dataUso}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                     </div>
                   )}
                 </div>

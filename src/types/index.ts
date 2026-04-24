@@ -364,11 +364,17 @@ export interface Invite {
   id: string;
   code: string;
   usado: boolean;
+  note?: string;          // rótulo livre: "para João", "beta tester", etc.
   criadoPor?: string;
   usadoPor?: string;
   usadoEm?: string;
   expiraEm?: string;
   criadoEm: string;
+  // campos enriquecidos pela RPC get_invite_stats
+  tenantId?:     string;
+  tenantNome?:   string;
+  usuarioNome?:  string;
+  usuarioEmail?: string;
 }
 
 // ─── Multi-tenant ─────────────────────────────────────────────────────────────
