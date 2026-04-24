@@ -40,9 +40,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ── Verifica sessão existente e escuta mudanças de auth ───────────────────
   useEffect(() => {
+    // Timeout de segurança: se o Supabase demorar mais de 6s (ex: free tier pausado,
+    // rede mobile lenta) desbloqueia a UI para o usuário ver a tela de login
+    // em vez de ficar preso no "Carregando..." indefinidamente.
+    const loadingTimeout = setTimeout(() => {
+      setAuthLoading(false);
+    }, 6000);
+
     // Sessão inicial (token persistido no localStorage do browser)
     supabase.auth.getSession().then(({ data }) => {
+      clearTimeout(loadingTimeout);
       if (data.session?.user) setUser(toUser(data.session.user));
+      setAuthLoading(false);
+    }).catch(() => {
+      clearTimeout(loadingTimeout);
       setAuthLoading(false);
     });
 
@@ -109,7 +120,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(toUser(sbUser));
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(loadingTimeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   // ── Login com e-mail + senha ──────────────────────────────────────────────

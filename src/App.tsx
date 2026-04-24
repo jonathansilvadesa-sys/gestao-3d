@@ -105,12 +105,27 @@ export default function App() {
     return (p.estoque ?? 0) < bk;
   }).length, [products]);
 
+  // Mensagem de conexão lenta após 3 s na tela de loading
+  const [loadingSlow, setLoadingSlow] = useState(false);
+  useEffect(() => {
+    if (!authLoading && !(isAuthenticated && tenantLoading)) return;
+    const t = setTimeout(() => setLoadingSlow(true), 3000);
+    return () => clearTimeout(t);
+  }, [authLoading, isAuthenticated, tenantLoading]);
+
   // Aguarda Supabase verificar sessão + tenant antes de decidir o que mostrar
   if (authLoading || (isAuthenticated && tenantLoading)) return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-2xl shadow-lg animate-pulse">🖨</div>
-        <p className="text-sm text-gray-400 font-medium">Carregando…</p>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-800 flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-16 h-16 bg-white/10 backdrop-blur rounded-3xl flex items-center justify-center shadow-2xl">
+          <div className="w-10 h-10 bg-gradient-to-br from-indigo-400 to-purple-400 rounded-2xl animate-pulse flex items-center justify-center text-xl">🖨</div>
+        </div>
+        <p className="text-white/80 text-sm font-medium tracking-wide">Carregando…</p>
+        {loadingSlow && (
+          <p className="text-white/40 text-xs text-center max-w-[200px] leading-relaxed">
+            Conectando ao servidor…<br />Pode levar alguns segundos.
+          </p>
+        )}
       </div>
     </div>
   );
