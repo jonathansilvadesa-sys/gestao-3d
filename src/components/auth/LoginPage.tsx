@@ -1,12 +1,16 @@
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+
+const GOOGLE_INVITE_KEY = 'gestao3d_pending_google_invite';
 
 type Mode = 'login' | 'reset';
+type GoogleStep = 'idle' | 'invite';
 
 interface Props { onShowSignup?: () => void; }
 
 export function LoginPage({ onShowSignup }: Props) {
-  const { login, loginWithGoogle, resetPassword } = useAuth();
+  const { login, loginWithGoogle, resetPassword, googleBlockedError, clearGoogleBlockedError } = useAuth();
   const [mode, setMode]         = useState<Mode>('login');
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
@@ -15,11 +19,74 @@ export function LoginPage({ onShowSignup }: Props) {
   const [loading, setLoading]       = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const handleGoogle = async () => {
+  // ── Google OAuth — step de convite ────────────────────────────────────────
+  const [googleStep, setGoogleStep]   = useState<GoogleStep>('idle');
+  const [inviteCode, setInviteCode]   = useState('');
+  const [inviteError, setInviteError] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+
+  // Formata o código enquanto digita (auto-maiúsculas e traço)
+  const handleInviteCode = (v: string) => {
+    const clean = v.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (clean.length <= 4) setInviteCode(clean);
+    else setInviteCode(clean.slice(0, 4) + '-' + clean.slice(4, 8));
+  };
+
+  // Clique inicial no botão Google → abre o step de convite
+  const handleGoogleClick = () => {
+    setInviteCode('');
+    setInviteError('');
+    clearGoogleBlockedError();
+    setGoogleStep('invite');
+  };
+
+  // Confirma o código de convite e redireciona para o Google
+  const handleGoogleInviteConfirm = async (e: FormEvent) => {
+    e.preventDefault();
+    setInviteError('');
+
+    const codigoLimpo = inviteCode.replace(/-/g, '');
+    if (codigoLimpo.length < 8) {
+      setInviteError('Código de convite inválido. Formato esperado: XXXX-XXXX');
+      return;
+    }
+
+    setInviteLoading(true);
+
+    // Valida o código no Supabase antes de redirecionar
+    const { data: invite, error: invErr } = await supabase
+      .from('invites')
+      .select('id, code, usado, expira_em')
+      .eq('code', inviteCode.toUpperCase())
+      .maybeSingle();
+
+    if (invErr || !invite) {
+      setInviteError('Código de convite não encontrado.');
+      setInviteLoading(false);
+      return;
+    }
+    if (invite.usado) {
+      setInviteError('Este código de convite já foi utilizado.');
+      setInviteLoading(false);
+      return;
+    }
+    if (invite.expira_em && new Date(invite.expira_em) < new Date()) {
+      setInviteError('Este código de convite expirou.');
+      setInviteLoading(false);
+      return;
+    }
+
+    // Guarda o código para uso pós-retorno do OAuth
+    localStorage.setItem(GOOGLE_INVITE_KEY, inviteCode.toUpperCase());
+
     setGoogleLoading(true);
-    setError('');
     const err = await loginWithGoogle();
-    if (err) { setError(err); setGoogleLoading(false); }
+    if (err) {
+      localStorage.removeItem(GOOGLE_INVITE_KEY);
+      setInviteError(err);
+      setGoogleLoading(false);
+      setInviteLoading(false);
+    }
     // sucesso → redireciona para Google, página sai daqui
   };
 
@@ -63,26 +130,80 @@ export function LoginPage({ onShowSignup }: Props) {
               <h2 className="text-xl font-bold text-gray-700">Entrar na conta</h2>
 
               {/* ── Google OAuth ── */}
-              <button
-                type="button"
-                onClick={handleGoogle}
-                disabled={googleLoading || loading}
-                className="w-full flex items-center justify-center gap-3 border border-gray-200 rounded-2xl py-3 px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
-              >
-                {googleLoading ? (
-                  <svg className="animate-spin w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                  </svg>
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 48 48">
-                    <path fill="#4285F4" d="M47.53 24.56c0-1.61-.14-3.17-.41-4.67H24v8.84h13.2c-.57 3.02-2.3 5.58-4.9 7.3v6.07h7.93c4.64-4.27 7.3-10.56 7.3-17.54z"/>
-                    <path fill="#34A853" d="M24 48c6.63 0 12.19-2.2 16.26-5.97l-7.93-6.07c-2.2 1.48-5.02 2.35-8.33 2.35-6.41 0-11.84-4.33-13.78-10.15H2.01v6.26C6.07 42.88 14.44 48 24 48z"/>
-                    <path fill="#FBBC05" d="M10.22 28.16A14.86 14.86 0 0 1 9.44 24c0-1.44.25-2.83.78-4.16v-6.26H2.01A23.98 23.98 0 0 0 0 24c0 3.87.93 7.53 2.01 10.42l8.21-6.26z"/>
-                    <path fill="#EA4335" d="M24 9.5c3.61 0 6.85 1.24 9.39 3.68l7.04-7.04C36.18 2.19 30.62 0 24 0 14.44 0 6.07 5.12 2.01 13.58l8.21 6.26C12.16 13.83 17.59 9.5 24 9.5z"/>
-                  </svg>
-                )}
-                {googleLoading ? 'Redirecionando…' : 'Continuar com Google'}
-              </button>
+              {googleBlockedError && (
+                <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm">
+                  {googleBlockedError}
+                </div>
+              )}
+
+              {googleStep === 'invite' ? (
+                /* Step: solicita código de convite antes de redirecionar */
+                <form onSubmit={handleGoogleInviteConfirm} className="space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <button
+                      type="button"
+                      onClick={() => { setGoogleStep('idle'); setInviteError(''); }}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 transition text-lg"
+                    >←</button>
+                    <span className="text-sm font-semibold text-gray-600">Código de convite para continuar com Google</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={inviteCode}
+                    onChange={(e) => handleInviteCode(e.target.value)}
+                    placeholder="XXXX-XXXX"
+                    required
+                    maxLength={9}
+                    autoFocus
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-indigo-400 uppercase"
+                  />
+                  {inviteError && (
+                    <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm">
+                      {inviteError}
+                    </div>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={inviteLoading || googleLoading || inviteCode.replace(/-/g, '').length < 8}
+                    className="w-full flex items-center justify-center gap-3 bg-white border border-gray-200 rounded-2xl py-3 px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
+                  >
+                    {(inviteLoading || googleLoading) ? (
+                      <svg className="animate-spin w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                      </svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 48 48">
+                        <path fill="#4285F4" d="M47.53 24.56c0-1.61-.14-3.17-.41-4.67H24v8.84h13.2c-.57 3.02-2.3 5.58-4.9 7.3v6.07h7.93c4.64-4.27 7.3-10.56 7.3-17.54z"/>
+                        <path fill="#34A853" d="M24 48c6.63 0 12.19-2.2 16.26-5.97l-7.93-6.07c-2.2 1.48-5.02 2.35-8.33 2.35-6.41 0-11.84-4.33-13.78-10.15H2.01v6.26C6.07 42.88 14.44 48 24 48z"/>
+                        <path fill="#FBBC05" d="M10.22 28.16A14.86 14.86 0 0 1 9.44 24c0-1.44.25-2.83.78-4.16v-6.26H2.01A23.98 23.98 0 0 0 0 24c0 3.87.93 7.53 2.01 10.42l8.21-6.26z"/>
+                        <path fill="#EA4335" d="M24 9.5c3.61 0 6.85 1.24 9.39 3.68l7.04-7.04C36.18 2.19 30.62 0 24 0 14.44 0 6.07 5.12 2.01 13.58l8.21 6.26C12.16 13.83 17.59 9.5 24 9.5z"/>
+                      </svg>
+                    )}
+                    {(inviteLoading || googleLoading) ? 'Verificando…' : 'Confirmar e continuar com Google'}
+                  </button>
+                </form>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleGoogleClick}
+                  disabled={googleLoading || loading}
+                  className="w-full flex items-center justify-center gap-3 border border-gray-200 rounded-2xl py-3 px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
+                >
+                  {googleLoading ? (
+                    <svg className="animate-spin w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                    </svg>
+                  ) : (
+                    <svg width="20" height="20" viewBox="0 0 48 48">
+                      <path fill="#4285F4" d="M47.53 24.56c0-1.61-.14-3.17-.41-4.67H24v8.84h13.2c-.57 3.02-2.3 5.58-4.9 7.3v6.07h7.93c4.64-4.27 7.3-10.56 7.3-17.54z"/>
+                      <path fill="#34A853" d="M24 48c6.63 0 12.19-2.2 16.26-5.97l-7.93-6.07c-2.2 1.48-5.02 2.35-8.33 2.35-6.41 0-11.84-4.33-13.78-10.15H2.01v6.26C6.07 42.88 14.44 48 24 48z"/>
+                      <path fill="#FBBC05" d="M10.22 28.16A14.86 14.86 0 0 1 9.44 24c0-1.44.25-2.83.78-4.16v-6.26H2.01A23.98 23.98 0 0 0 0 24c0 3.87.93 7.53 2.01 10.42l8.21-6.26z"/>
+                      <path fill="#EA4335" d="M24 9.5c3.61 0 6.85 1.24 9.39 3.68l7.04-7.04C36.18 2.19 30.62 0 24 0 14.44 0 6.07 5.12 2.01 13.58l8.21 6.26C12.16 13.83 17.59 9.5 24 9.5z"/>
+                    </svg>
+                  )}
+                  {googleLoading ? 'Redirecionando…' : 'Continuar com Google'}
+                </button>
+              )}
 
               {/* Separador */}
               <div className="flex items-center gap-3">
