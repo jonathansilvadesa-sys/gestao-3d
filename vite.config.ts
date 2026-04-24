@@ -46,14 +46,25 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
+          // React core — carregado em toda página
           vendor:   ['react', 'react-dom'],
+          // Supabase — SDK grande mas necessário logo no boot
+          supabase: ['@supabase/supabase-js'],
+          // Gráficos — só usados no Dashboard
           charts:   ['recharts'],
+          // PDF — só usado sob demanda
           pdf:      ['jspdf', 'jspdf-autotable'],
+          // Excel — só usado na exportação (task #42)
+          xlsx:     ['xlsx'],
+          // Tour de onboarding — só na primeira visita
+          tour:     ['react-joyride'],
+          // QR code — só em etiquetas (task #43)
+          qrcode:   ['qrcode'],
         },
       },
     },
-    // Avisa se algum chunk passar de 600kb
-    chunkSizeWarningLimit: 600,
+    // Avisa se algum chunk passar de 800kb (xlsx tem ~700kb minificado)
+    chunkSizeWarningLimit: 800,
   },
 
   // Permite que variáveis VITE_* sejam acessadas via import.meta.env
