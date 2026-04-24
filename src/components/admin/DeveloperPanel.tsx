@@ -40,7 +40,7 @@ interface DeveloperBadgeProps {
 // ── Componente principal ──────────────────────────────────────────────────────
 export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBadgeProps = {}) {
   const { user }                                                    = useAuth();
-  const { myRole, tenant, allTenants, switchTenant, createTenant } = useTenant();
+  const { myRole, tenant, allTenants, switchTenant, createTenant, inviteMember } = useTenant();
   const { matrix, updateMatrix }                                    = usePermissions();
 
   const [open,       setOpen]       = useState(false);
@@ -65,6 +65,12 @@ export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBa
   const [addError,     setAddError]     = useState('');
   const [addSuccess,   setAddSuccess]   = useState('');
   const [deletingId,   setDeletingId]   = useState<string | null>(null);
+
+  // ── Convidar por email ────────────────────────────────────────────────────
+  const [emailInvite,        setEmailInvite]        = useState('');
+  const [emailInviteRole,    setEmailInviteRole]    = useState<MemberRole>('operador');
+  const [emailInviteLoading, setEmailInviteLoading] = useState(false);
+  const [emailInviteResult,  setEmailInviteResult]  = useState<{type:'success'|'fallback'|'error'; msg:string} | null>(null);
 
   // ── Criar nova empresa ────────────────────────────────────────────────────
   const [showNovaEmp, setShowNovaEmp]  = useState(false);
@@ -209,6 +215,40 @@ export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBa
     await loadMembers(selectedTenant.id);
     await loadTenantStats();
     setAddLoading(false);
+  };
+
+  // ── Convidar novo usuário por email ──────────────────────────────────────
+  const handleEmailInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailInvite.trim() || !selectedTenant) return;
+    setEmailInviteLoading(true);
+    setEmailInviteResult(null);
+
+    // Troca o tenant ativo temporariamente para o selecionado
+    const prevTenant = tenant;
+    await switchTenant(selectedTenant.id);
+
+    const err = await inviteMember(emailInvite.trim(), emailInviteRole);
+
+    // Restaura tenant anterior se necessário
+    if (prevTenant && prevTenant.id !== selectedTenant.id) {
+      await switchTenant(prevTenant.id);
+    }
+
+    if (!err) {
+      setEmailInviteResult({ type: 'success', msg: `Email enviado para ${emailInvite.trim()}!` });
+      setEmailInvite('');
+    } else if (err.startsWith('__email_failed__')) {
+      const code = err.replace('__email_failed__', '');
+      setEmailInviteResult({
+        type: 'fallback',
+        msg: `Email falhou. Compartilhe o código manualmente: ${code}`,
+      });
+      setEmailInvite('');
+    } else {
+      setEmailInviteResult({ type: 'error', msg: err });
+    }
+    setEmailInviteLoading(false);
   };
 
   // ── Excluir empresa ───────────────────────────────────────────────────────
@@ -453,6 +493,56 @@ export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBa
                         </div>
                         {addError   && <p className="text-xs text-red-500">{addError}</p>}
                         {addSuccess && <p className="text-xs text-emerald-600 font-semibold">{addSuccess}</p>}
+                      </form>
+                    </div>
+
+                    {/* Convidar novo usuário por email */}
+                    <div className="px-4 py-3 border-b border-gray-50 dark:border-gray-700/50 flex-shrink-0">
+                      <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 7L2 7"/></svg>
+                        Convidar por email
+                      </p>
+                      <form onSubmit={handleEmailInvite} className="space-y-2">
+                        <div className="flex gap-2">
+                          <input
+                            type="email"
+                            value={emailInvite}
+                            onChange={(e) => { setEmailInvite(e.target.value); setEmailInviteResult(null); }}
+                            placeholder="novo@usuario.com"
+                            className="flex-1 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-300"
+                          />
+                          <select
+                            value={emailInviteRole}
+                            onChange={(e) => setEmailInviteRole(e.target.value as MemberRole)}
+                            className="border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+                          >
+                            {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                          </select>
+                          <button
+                            type="submit"
+                            disabled={emailInviteLoading || !emailInvite.trim()}
+                            className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1"
+                            title="Enviar convite por email"
+                          >
+                            {emailInviteLoading
+                              ? <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                              : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                            }
+                          </button>
+                        </div>
+                        {emailInviteResult && (
+                          <div className={`text-xs rounded-lg px-3 py-2 flex items-start gap-2 ${
+                            emailInviteResult.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400' :
+                            emailInviteResult.type === 'fallback' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400' :
+                            'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+                          }`}>
+                            <span>{emailInviteResult.type === 'success' ? '✅' : emailInviteResult.type === 'fallback' ? '⚠️' : '❌'}</span>
+                            <span className="font-medium">{emailInviteResult.msg}</span>
+                          </div>
+                        )}
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                          Gera um código de convite e envia o link por email. O usuário não precisa ter conta.
+                        </p>
                       </form>
                     </div>
 

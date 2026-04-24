@@ -168,20 +168,66 @@ export function TenantProvider({ children }: Props) {
   }, [userId]);
 
   // ── inviteMember ────────────────────────────────────────────────────────────
-  // Versão MVP: adiciona por user_id diretamente (sem email invite)
-  // Produção: enviar email via Supabase Edge Function + magic link
+  // Gera código de convite, salva na tabela invites e envia email via Edge Function
   const inviteMember = useCallback(async (
     email: string,
     role: TenantRole,
   ): Promise<string | null> => {
     if (!tenant) return 'Nenhuma empresa ativa';
     try {
-      // Busca user_id pelo email na tabela auth.users (via RPC se disponível)
-      // Por enquanto, armazena o convite como pending (futuro)
-      console.info('[tenant] inviteMember (MVP): email', email, 'role', role, '→ tenant', tenant.id);
-      return 'Funcionalidade de convite por email em breve. Peça ao usuário para se cadastrar e informe o ID do tenant.';
+      // 1. Gera código via RPC do Supabase
+      const { data: codeData, error: codeErr } = await supabase
+        .rpc('generate_invite_code');
+      if (codeErr || !codeData) return 'Erro ao gerar código de convite';
+      const invite_code: string = codeData;
+
+      // 2. Salva convite na tabela invites com tenant_id e email como note
+      const expiraEm = new Date();
+      expiraEm.setDate(expiraEm.getDate() + 7); // expira em 7 dias
+
+      const { error: insertErr } = await supabase
+        .from('invites')
+        .insert({
+          code:      invite_code,
+          tenant_id: tenant.id,
+          note:      `Convite para ${email} (${role})`,
+          expira_em: expiraEm.toISOString(),
+        });
+      if (insertErr) return 'Erro ao criar convite: ' + insertErr.message;
+
+      // 3. Chama a Edge Function para enviar o email
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-invite`,
+        {
+          method:  'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${token}`,
+            'apikey':        import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            email,
+            invite_code,
+            tenant_nome: tenant.nome,
+            role,
+          }),
+        },
+      );
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        // Email falhou mas o convite foi criado — retorna código para copiar manualmente
+        console.warn('[tenant] inviteMember email error:', err);
+        return `__email_failed__${invite_code}`;
+      }
+
+      return null; // sucesso completo
     } catch (e) {
-      return 'Erro ao enviar convite';
+      console.warn('[tenant] inviteMember exception:', e);
+      return 'Erro ao enviar convite. Verifique sua conexão.';
     }
   }, [tenant]);
 

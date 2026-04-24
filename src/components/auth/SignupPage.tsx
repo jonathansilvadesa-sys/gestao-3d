@@ -9,7 +9,7 @@
  *  5. TenantContext detecta new user sem tenant → OnboardingTenant auto-preenche empresa
  */
 
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 
@@ -30,6 +30,17 @@ export function SignupPage({ onBack }: Props) {
   const [loading,       setLoading]       = useState(false);
   const [error,         setError]         = useState('');
   const [confirmEmail,  setConfirmEmail]  = useState(false);
+
+  // Lê ?invite= da URL ao montar (link de convite por email)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlInvite = params.get('invite');
+    if (urlInvite) {
+      const clean = urlInvite.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+      setCodigo(clean.length > 4 ? clean.slice(0,4) + '-' + clean.slice(4) : clean);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   // Formata o código enquanto digita (auto-maiúsculas e traço)
   const handleCodigo = (v: string) => {
