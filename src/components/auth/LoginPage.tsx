@@ -94,9 +94,14 @@ export function LoginPage({ onShowSignup }: Props) {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const err = await login(email, password);
-    if (err) setError(err);
-    setLoading(false);
+    try {
+      const err = await login(email, password);
+      if (err) setError(err);
+    } catch {
+      setError('Erro de conexão. Verifique sua internet e tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleReset = async (e: FormEvent) => {
@@ -104,10 +109,15 @@ export function LoginPage({ onShowSignup }: Props) {
     setLoading(true);
     setError('');
     setSuccess('');
-    const err = await resetPassword(email);
-    if (err) setError(err);
-    else setSuccess('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
-    setLoading(false);
+    try {
+      const err = await resetPassword(email);
+      if (err) setError(err);
+      else setSuccess('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
+    } catch {
+      setError('Erro de conexão. Verifique sua internet e tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

@@ -130,7 +130,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string): Promise<string | null> => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return traduzirErro(error.message);
-    if (data.user) await adoptLegacyData(data.user.id);
+    // Fire-and-forget: não bloqueia o login se a migração demorar
+    if (data.user) adoptLegacyData(data.user.id).catch(console.warn);
     return null;
   }, []);
 
