@@ -6,10 +6,18 @@ import type { AuthContextType, User, UserRole } from '@/types';
 const GOOGLE_INVITE_KEY = 'gestao3d_pending_google_invite';
 
 // ─── Converte sessão Supabase → User interno ──────────────────────────────────
-function toUser(sbUser: { id: string; email?: string; user_metadata?: Record<string, unknown> }): User {
+function toUser(sbUser: {
+  id: string;
+  email?: string;
+  user_metadata?: Record<string, unknown>;
+  app_metadata?:  Record<string, unknown>;
+}): User {
   const email = sbUser.email ?? '';
   const nome  = (sbUser.user_metadata?.full_name as string) ?? email.split('@')[0];
-  const role  = (sbUser.user_metadata?.role as UserRole) ?? 'admin';
+  // app_metadata é server-controlled (seguro para role) — user_metadata como fallback legado
+  const role  = (sbUser.app_metadata?.role  as UserRole)
+             ?? (sbUser.user_metadata?.role as UserRole)
+             ?? 'admin';
   return {
     id:     sbUser.id,
     nome,
