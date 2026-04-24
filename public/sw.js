@@ -7,7 +7,7 @@
  *  - API Supabase: Network-Only (dados sempre frescos)
  */
 
-const CACHE_NAME    = 'gestao3d-v1';
+const CACHE_NAME    = 'gestao3d-__BUILD_DATE__';
 const OFFLINE_URL   = '/';
 
 // Assets a pré-cachear na instalação

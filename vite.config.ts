@@ -3,9 +3,30 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from 'tailwindcss'
 import autoprefixer from 'autoprefixer'
 import path from 'path'
+import fs from 'fs'
+
+/**
+ * Injeta a data/hora do build no sw.js para que cada deploy do Vercel
+ * invalide automaticamente o cache do Service Worker.
+ * Sem isso, o navegador continua servindo JS/CSS antigos (Cache-First)
+ * mesmo após novos deploys — causa do "site lento no Chrome normal".
+ */
+function swVersionPlugin() {
+  return {
+    name: 'sw-version-inject',
+    closeBundle() {
+      const swPath = path.resolve(__dirname, 'dist/sw.js');
+      if (!fs.existsSync(swPath)) return;
+      const buildDate = Date.now().toString();
+      const content = fs.readFileSync(swPath, 'utf-8');
+      fs.writeFileSync(swPath, content.replace('__BUILD_DATE__', buildDate));
+      console.log(`[sw-version-inject] CACHE_NAME → gestao3d-${buildDate}`);
+    },
+  };
+}
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), swVersionPlugin()],
 
   resolve: {
     alias: {
