@@ -3,30 +3,13 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from 'tailwindcss'
 import autoprefixer from 'autoprefixer'
 import path from 'path'
-import fs from 'fs'
 
-/**
- * Injeta a data/hora do build no sw.js para que cada deploy do Vercel
- * invalide automaticamente o cache do Service Worker.
- * Sem isso, o navegador continua servindo JS/CSS antigos (Cache-First)
- * mesmo após novos deploys — causa do "site lento no Chrome normal".
- */
-function swVersionPlugin() {
-  return {
-    name: 'sw-version-inject',
-    closeBundle() {
-      const swPath = path.resolve(__dirname, 'dist/sw.js');
-      if (!fs.existsSync(swPath)) return;
-      const buildDate = Date.now().toString();
-      const content = fs.readFileSync(swPath, 'utf-8');
-      fs.writeFileSync(swPath, content.replace('__BUILD_DATE__', buildDate));
-      console.log(`[sw-version-inject] CACHE_NAME → gestao3d-${buildDate}`);
-    },
-  };
-}
+// Nota: a injeção do timestamp no sw.js é feita por scripts/patch-sw.cjs
+// que roda após o vite build via "build": "vite build && node scripts/patch-sw.cjs"
+// O plugin closeBundle() não funcionava pois os arquivos public/ são copiados depois dele.
 
 export default defineConfig({
-  plugins: [react(), swVersionPlugin()],
+  plugins: [react()],
 
   resolve: {
     alias: {
