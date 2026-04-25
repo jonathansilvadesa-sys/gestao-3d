@@ -40,6 +40,8 @@ export function TenantProvider({ children }: Props) {
   // ── Carrega tenant do usuário ───────────────────────────────────────────────
   const loadTenant = useCallback(async (uid: string) => {
     setTenantLoading(true);
+    // Timeout de segurança: se o Supabase demorar mais de 8s desbloqueia a UI
+    const loadingTimeout = setTimeout(() => setTenantLoading(false), 8000);
     try {
       // Busca memberships com dados do tenant inline
       const { data: memberships, error } = await supabase
@@ -93,6 +95,7 @@ export function TenantProvider({ children }: Props) {
     } catch (e) {
       console.warn('[tenant] loadTenant exception:', e);
     } finally {
+      clearTimeout(loadingTimeout);
       setTenantLoading(false);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
