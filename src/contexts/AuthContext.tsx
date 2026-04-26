@@ -4,8 +4,33 @@ import { adoptLegacyData } from '@/lib/db';
 import type { AuthContextType, User, UserRole } from '@/types';
 
 const GOOGLE_INVITE_KEY = 'gestao3d_pending_google_invite';
+const ACTIVE_TENANT_KEY = 'gestao3d_active_tenant';
 
-// ─── Converte sessão Supabase → User interno ──────────────────────────────────
+function purgeStaleAuth(): void {
+  try {
+    const toRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (k.startsWith('sb-') && k.includes('-auth-token')) toRemove.push(k);
+    }
+    toRemove.forEach((k) => localStorage.removeItem(k));
+    localStorage.removeItem(ACTIVE_TENANT_KEY);
+    localStorage.removeItem(GOOGLE_INVITE_KEY);
+  } catch { /* ignora */ }
+}
+
+function isStaleAuthError(message: string | undefined | null): boolean {
+  if (!message) return false;
+  const m = message.toLowerCase();
+  return m.includes('refresh token')
+      || m.includes('invalid refresh')
+      || m.includes('jwt expired')
+      || m.includes('invalid jwt')
+      || m.includes('user from sub claim')
+      || m.includes('not authenticated');
+}
+
 function toUser(sbUser: {
   id: string;
   email?: string;
@@ -14,20 +39,12 @@ function toUser(sbUser: {
 }): User {
   const email = sbUser.email ?? '';
   const nome  = (sbUser.user_metadata?.full_name as string) ?? email.split('@')[0];
-  // app_metadata é server-controlled (seguro para role) — user_metadata como fallback legado
   const role  = (sbUser.app_metadata?.role  as UserRole)
              ?? (sbUser.user_metadata?.role as UserRole)
              ?? 'admin';
-  return {
-    id:     sbUser.id,
-    nome,
-    email,
-    role,
-    avatar: nome.charAt(0).toUpperCase(),
-  };
+  return { id: sbUser.id, nome, email, role, avatar: nome.charAt(0).toUpperCase() };
 }
 
-// ─── Mensagens de erro em português ──────────────────────────────────────────
 function traduzirErro(msg: string): string {
   if (msg.includes('Invalid login credentials'))  return 'E-mail ou senha incorretos.';
   if (msg.includes('Email not confirmed'))         return 'Confirme seu e-mail antes de entrar.';
@@ -41,33 +58,43 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser]               = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true); // true até a sessão inicial ser verificada
+  const [authLoading, setAuthLoading] = useState(true);
   const [googleBlockedError, setGoogleBlockedError] = useState<string | null>(null);
 
   const clearGoogleBlockedError = useCallback(() => setGoogleBlockedError(null), []);
 
-  // ── Verifica sessão existente e escuta mudanças de auth ───────────────────
   useEffect(() => {
-    // Timeout de segurança: se o Supabase demorar mais de 6s (ex: free tier pausado,
-    // rede mobile lenta) desbloqueia a UI para o usuário ver a tela de login
-    // em vez de ficar preso no "Carregando..." indefinidamente.
-    const loadingTimeout = setTimeout(() => {
-      setAuthLoading(false);
-    }, 6000);
+    const loadingTimeout = setTimeout(() => { setAuthLoading(false); }, 6000);
 
-    // Sessão inicial (token persistido no localStorage do browser)
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data, error }) => {
       clearTimeout(loadingTimeout);
+      if (error && isStaleAuthError(error.message)) {
+        console.warn('[auth] sessão local inválida → purgando:', error.message);
+        purgeStaleAuth();
+        setUser(null);
+        setAuthLoading(false);
+        return;
+      }
       if (data.session?.user) setUser(toUser(data.session.user));
       setAuthLoading(false);
-    }).catch(() => {
+    }).catch((e) => {
       clearTimeout(loadingTimeout);
+      const msg = e?.message ?? String(e);
+      if (isStaleAuthError(msg)) {
+        console.warn('[auth] exceção em getSession → purgando:', msg);
+        purgeStaleAuth();
+      }
       setAuthLoading(false);
     });
 
-    // Listener para login/logout/refresh de token
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!session?.user) {
+        if (event === 'SIGNED_OUT') {
+          try {
+            localStorage.removeItem(ACTIVE_TENANT_KEY);
+            localStorage.removeItem(GOOGLE_INVITE_KEY);
+          } catch { /* ignora */ }
+        }
         setUser(null);
         return;
       }
@@ -76,7 +103,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const isGoogleProvider = sbUser.app_metadata?.provider === 'google'
         || (sbUser.app_metadata?.providers as string[] | undefined)?.includes('google');
 
-      // ── Para usuários Google: verifica se é novo (sem tenant) ──────────────
       if (isGoogleProvider && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
         const { data: memberships } = await supabase
           .from('tenant_memberships')
@@ -87,19 +113,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const isNewUser = !memberships || memberships.length === 0;
 
         if (isNewUser) {
-          // Verifica convite pendente guardado antes do redirect
           const pendingCode = localStorage.getItem(GOOGLE_INVITE_KEY);
 
           if (!pendingCode) {
-            // Nenhum convite → bloqueia e desconecta
             await supabase.auth.signOut();
-            setGoogleBlockedError(
-              'Acesso via Google requer um código de convite. Solicite ao administrador.'
-            );
+            setGoogleBlockedError('Acesso via Google requer um código de convite. Solicite ao administrador.');
             return;
           }
 
-          // Revalida o convite (pode ter expirado durante o fluxo OAuth)
           const { data: invite } = await supabase
             .from('invites')
             .select('id, usado, expira_em')
@@ -109,13 +130,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!invite || invite.usado || (invite.expira_em && new Date(invite.expira_em) < new Date())) {
             localStorage.removeItem(GOOGLE_INVITE_KEY);
             await supabase.auth.signOut();
-            setGoogleBlockedError(
-              'O código de convite informado é inválido ou expirou. Solicite um novo ao administrador.'
-            );
+            setGoogleBlockedError('O código de convite informado é inválido ou expirou. Solicite um novo ao administrador.');
             return;
           }
 
-          // Convite válido → marca como usado e limpa localStorage
           await supabase
             .from('invites')
             .update({ usado: true, usado_por: sbUser.id, usado_em: new Date().toISOString() })
@@ -134,16 +152,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // ── Login com e-mail + senha ──────────────────────────────────────────────
   const login = useCallback(async (email: string, password: string): Promise<string | null> => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return traduzirErro(error.message);
-    // Fire-and-forget: não bloqueia o login se a migração demorar
     if (data.user) adoptLegacyData(data.user.id).catch(console.warn);
     return null;
   }, []);
 
-  // ── Cadastro com e-mail + senha ──────────────────────────────────────────────
   const signup = useCallback(async (
     email: string,
     password: string,
@@ -156,30 +171,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       options: { data: { full_name: nome, initial_company: nomeEmpresa } },
     });
     if (error) return traduzirErro(error.message);
-    // Se email confirmation estiver habilitado no Supabase, session será null
     if (!data.session) return '__confirm_email__';
     return null;
   }, []);
 
-  // ── Login com Google OAuth ────────────────────────────────────────────────
   const loginWithGoogle = useCallback(async (): Promise<string | null> => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: window.location.origin,
-        queryParams: { prompt: 'select_account' },
-      },
+      options: { redirectTo: window.location.origin, queryParams: { prompt: 'select_account' } },
     });
     if (error) return traduzirErro(error.message);
-    return null; // redireciona para o Google — a sessão chegará via onAuthStateChange
+    return null;
   }, []);
 
-  // ── Logout ────────────────────────────────────────────────────────────────
-  const logout = useCallback(async () => {
-    await supabase.auth.signOut();
-  }, []);
+  const logout = useCallback(async () => { await supabase.auth.signOut(); }, []);
 
-  // ── Reset de senha via e-mail ─────────────────────────────────────────────
   const resetPassword = useCallback(async (email: string): Promise<string | null> => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin,
@@ -190,16 +196,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user,
-      login,
-      loginWithGoogle,
-      signup,
-      logout,
-      resetPassword,
-      isAuthenticated: !!user,
-      authLoading,
-      googleBlockedError,
-      clearGoogleBlockedError,
+      user, login, loginWithGoogle, signup, logout, resetPassword,
+      isAuthenticated: !!user, authLoading, googleBlockedError, clearGoogleBlockedError,
     }}>
       {children}
     </AuthContext.Provider>

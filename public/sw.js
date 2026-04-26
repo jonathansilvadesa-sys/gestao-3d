@@ -1,42 +1,50 @@
 /**
  * sw.js — Service Worker do Gestão 3D
  *
- * Estratégias:
- *  - Assets estáticos (JS, CSS, fontes, ícones): Cache-First
- *  - Navegação (HTML): Network-First com fallback para cache
- *  - API Supabase: Network-Only (dados sempre frescos)
+ * Estratégias (revisadas para evitar quebra pós-deploy):
+ *  - Assets hashados (/assets/*): Stale-While-Revalidate
+ *  - Outros estáticos (JS/CSS/font/img fora de /assets): Stale-While-Revalidate
+ *  - Navegação (HTML): Network-First, fallback para cache só se offline
+ *  - API Supabase: Network-Only (nunca cachear)
+ *
+ * IMPORTANTE: NÃO chamamos skipWaiting()/clients.claim() automaticamente.
+ * Isso evita o cenário em que o novo SW deleta o cache antigo enquanto
+ * a aba do usuário ainda referencia chunks lazy do build anterior. O
+ * UpdatePrompt na UI faz a transição manual quando o usuário concordar.
  */
 
 const CACHE_NAME    = 'gestao3d-__BUILD_DATE__';
+const HTML_CACHE    = 'gestao3d-html-__BUILD_DATE__';
 const OFFLINE_URL   = '/';
 
-// Assets a pré-cachear na instalação
+// Assets a pré-cachear na instalação (mínimo absoluto)
 const PRECACHE_URLS = [
-  '/',
   '/manifest.json',
 ];
 
 // ── Instalação ────────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_URLS).catch((e) => {
-        console.warn('[SW] precache partial failure:', e);
-      });
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.addAll(PRECACHE_URLS).catch((e) => {
+        console.warn('[SW] precache parcial:', e);
+      }),
+    ),
+    // Sem self.skipWaiting(): aguarda o usuário recarregar (UpdatePrompt cuida disso)
   );
 });
 
-// ── Ativação — limpa caches antigos ──────────────────────────────────────────
+// ── Ativação — limpa caches antigos com prefixo gestao3d- ────────────────────
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((k) => k !== CACHE_NAME)
-          .map((k) => caches.delete(k))
-      )
-    ).then(() => self.clients.claim())
+          .filter((k) => k.startsWith('gestao3d-') && k !== CACHE_NAME && k !== HTML_CACHE)
+          .map((k) => caches.delete(k)),
+      ),
+    ),
+    // Sem self.clients.claim(): só assume controle no próximo carregamento
   );
 });
 
@@ -45,78 +53,105 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Ignora requisições não-GET e extensões de browser
+  // Ignora requisições não-GET e protocolos não-http(s)
   if (request.method !== 'GET') return;
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
-  // Supabase API → Network-Only (nunca cachear dados do banco)
+  // Supabase API → Network-Only (dados sempre frescos, nunca cachear)
   if (url.hostname.includes('supabase.co')) return;
 
-  // Assets estáticos (JS, CSS, imagens, fontes) → Cache-First
+  // Assets hashados do Vite → Stale-While-Revalidate
+  // Os nomes são versionados pelo Vite, então URL única = entrada única no cache.
+  // Não invalidar agressivamente evita ChunkLoadError em sessões longas pós-deploy.
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(staleWhileRevalidate(request, CACHE_NAME));
+    return;
+  }
+
+  // Outros estáticos → Stale-While-Revalidate em cache versionado
   if (
     request.destination === 'script' ||
     request.destination === 'style'  ||
     request.destination === 'font'   ||
-    request.destination === 'image'  ||
-    url.pathname.startsWith('/assets/')
+    request.destination === 'image'
   ) {
-    event.respondWith(cacheFirst(request));
+    event.respondWith(staleWhileRevalidate(request, CACHE_NAME));
     return;
   }
 
-  // Navegação HTML → Network-First com fallback offline
+  // Navegação HTML → Network-First (sempre tenta versão fresca)
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirstWithFallback(request));
+    event.respondWith(networkFirstHTML(request));
     return;
   }
 });
 
-// ── Estratégia: Cache-First ───────────────────────────────────────────────────
-async function cacheFirst(request) {
-  const cached = await caches.match(request);
-  if (cached) return cached;
+// ── Estratégia: Stale-While-Revalidate ────────────────────────────────────────
+async function staleWhileRevalidate(request, cacheName) {
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(request);
 
-  try {
-    const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch {
-    return new Response('Recurso não disponível offline.', {
-      status: 503,
-      headers: { 'Content-Type': 'text/plain' },
-    });
+  const networkPromise = fetch(request)
+    .then((response) => {
+      if (response && response.ok) {
+        cache.put(request, response.clone()).catch(() => {});
+      }
+      return response;
+    })
+    .catch(() => null);
+
+  // Se há cópia em cache, devolve já e atualiza em background.
+  // Caso contrário, espera a rede.
+  if (cached) {
+    networkPromise.catch(() => {}); // garante que erro não vire unhandledrejection
+    return cached;
   }
+  const fresh = await networkPromise;
+  if (fresh) return fresh;
+
+  return new Response('Recurso indisponível.', {
+    status: 503,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+  });
 }
 
-// ── Estratégia: Network-First com fallback ────────────────────────────────────
-async function networkFirstWithFallback(request) {
+// ── Estratégia: Network-First para HTML ───────────────────────────────────────
+async function networkFirstHTML(request) {
+  const cache = await caches.open(HTML_CACHE);
   try {
     const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, response.clone());
+    if (response && response.ok) {
+      cache.put(request, response.clone()).catch(() => {});
     }
     return response;
   } catch {
-    // Offline: tenta o cache
-    const cached = await caches.match(request);
+    // Offline: tenta o cache exato
+    const cached = await cache.match(request);
     if (cached) return cached;
 
-    // Fallback: raiz da app (SPA)
-    const fallback = await caches.match(OFFLINE_URL);
-    return fallback ?? new Response('Você está offline. Reconecte-se para continuar.', {
+    // Fallback: raiz da app (SPA shell)
+    const fallback = await cache.match(OFFLINE_URL);
+    if (fallback) return fallback;
+
+    return new Response('Você está offline. Reconecte-se para continuar.', {
       status: 503,
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     });
   }
 }
 
-// ── Mensagem: forçar atualização ──────────────────────────────────────────────
+// ── Mensagens vindas da UI ────────────────────────────────────────────────────
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
+    // Usuário clicou em "Atualizar agora" no UpdatePrompt → assume controle.
     self.skipWaiting();
+  }
+  if (event.data?.type === 'CLEAR_CACHES') {
+    // Botão de pânico: limpa tudo (chamado em fluxos de logout/erro fatal)
+    event.waitUntil(
+      caches.keys().then((keys) =>
+        Promise.all(keys.filter((k) => k.startsWith('gestao3d-')).map((k) => caches.delete(k))),
+      ),
+    );
   }
 });

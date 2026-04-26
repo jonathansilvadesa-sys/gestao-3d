@@ -21,7 +21,8 @@ if (!original.includes('__BUILD_DATE__')) {
   process.exit(0);
 }
 
-const patched = original.replace('__BUILD_DATE__', buildDate);
+// replaceAll para cobrir múltiplos placeholders (CACHE_NAME e HTML_CACHE)
+const patched = original.split('__BUILD_DATE__').join(buildDate);
 fs.writeFileSync(swPath, patched, 'utf-8');
 
 console.log(`✅ patch-sw: cache name injetado → gestao3d-${buildDate}`);
