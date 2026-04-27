@@ -12,7 +12,11 @@ function purgeStaleAuth(): void {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (!k) continue;
-      if (k.startsWith('sb-') && k.includes('-auth-token')) toRemove.push(k);
+      // Cobre tokens padrão do Supabase (sb-<ref>-auth-token) E o nosso
+      // storageKey customizado (gestao3d-auth-v*)
+      if ((k.startsWith('sb-') && k.includes('-auth-token')) || k.startsWith('gestao3d-auth-')) {
+        toRemove.push(k);
+      }
     }
     toRemove.forEach((k) => localStorage.removeItem(k));
     localStorage.removeItem(ACTIVE_TENANT_KEY);

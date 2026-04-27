@@ -17,6 +17,29 @@ import { UpdatePrompt }     from '@/components/shared/UpdatePrompt';
 import './index.css';
 import App from './App';
 import { flushOfflineQueue } from '@/lib/db';
+import { hardReset }         from '@/utils/hardReset';
+
+// ── Porta de escape: ?reset=1 (ou #reset) limpa tudo e recarrega ──────────────
+// Útil para mandar um link para o usuário sair de qualquer estado quebrado.
+// Ex.: https://gestao-3d.vercel.app/?reset=1
+(function checkResetParam() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('reset') === '1' || window.location.hash === '#reset') {
+      // Substitui o documento por uma mensagem mínima enquanto limpa
+      document.documentElement.innerHTML = '<body style="font-family:system-ui;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f9fafb;color:#374151"><div style="text-align:center"><div style="font-size:32px;margin-bottom:8px">↻</div><div>Limpando dados locais…</div></div></body>';
+      hardReset(true);
+      // Para a execução do bundle aqui — o reload virá em ~50ms
+      throw new Error('__hard_reset_in_progress__');
+    }
+  } catch (e) {
+    if ((e as Error).message === '__hard_reset_in_progress__') {
+      // Re-lança para impedir o resto do bundle de rodar
+      throw e;
+    }
+    // Outros erros (URL malformada, etc.) — segue o fluxo normal
+  }
+})();
 
 // ── Recovery contra ChunkLoadError pós-deploy ─────────────────────────────────
 // Quando o Vercel publica um build novo, os chunks lazy mudam de hash.

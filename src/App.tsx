@@ -23,6 +23,7 @@ import { QuickActionFAB }       from '@/components/shared/QuickActionFAB';
 import { GlobalSearch }         from '@/components/shared/GlobalSearch';
 import { SkeletonDashboard }    from '@/components/shared/Skeleton';
 import { OfflineBanner }        from '@/components/shared/OfflineBanner';
+import { hardReset }              from '@/utils/hardReset';
 import { pedirPermissaoNotificacao, notificarEstoqueZerado } from '@/utils/notifications';
 import type { AppTab, Product, EstoqueMovimento } from '@/types';
 
@@ -105,26 +106,56 @@ export default function App() {
     return (p.estoque ?? 0) < bk;
   }).length, [products]);
 
-  // Mensagem de conexão lenta após 3 s na tela de loading
+  // Mensagem de conexão lenta após 3 s na tela de loading,
+  // e oferta de reset após 8 s (caso o cache esteja preso)
   const [loadingSlow, setLoadingSlow] = useState(false);
+  const [loadingStuck, setLoadingStuck] = useState(false);
   useEffect(() => {
-    if (!authLoading && !(isAuthenticated && tenantLoading)) return;
-    const t = setTimeout(() => setLoadingSlow(true), 3000);
-    return () => clearTimeout(t);
+    if (!authLoading && !(isAuthenticated && tenantLoading)) {
+      setLoadingSlow(false);
+      setLoadingStuck(false);
+      return;
+    }
+    const t1 = setTimeout(() => setLoadingSlow(true), 3000);
+    const t2 = setTimeout(() => setLoadingStuck(true), 8000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [authLoading, isAuthenticated, tenantLoading]);
+
+  const handleStuckReset = async () => {
+    const ok = window.confirm(
+      'Vamos limpar o cache local deste navegador (dados do app, sessão, cookies do site) e recarregar. Sua conta no servidor não é afetada — você só vai precisar entrar de novo. Continuar?'
+    );
+    if (!ok) return;
+    await hardReset(true);
+  };
 
   // Aguarda Supabase verificar sessão + tenant antes de decidir o que mostrar
   if (authLoading || (isAuthenticated && tenantLoading)) return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-800 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-800 flex items-center justify-center px-4">
       <div className="flex flex-col items-center gap-4">
         <div className="w-16 h-16 bg-white/10 backdrop-blur rounded-3xl flex items-center justify-center shadow-2xl">
           <div className="w-10 h-10 bg-gradient-to-br from-indigo-400 to-purple-400 rounded-2xl animate-pulse flex items-center justify-center text-xl">🖨</div>
         </div>
         <p className="text-white/80 text-sm font-medium tracking-wide">Carregando…</p>
-        {loadingSlow && (
+        {loadingSlow && !loadingStuck && (
           <p className="text-white/40 text-xs text-center max-w-[200px] leading-relaxed">
             Conectando ao servidor…<br />Pode levar alguns segundos.
           </p>
+        )}
+        {loadingStuck && (
+          <div className="flex flex-col items-center gap-3 mt-2 bg-white/5 backdrop-blur rounded-2xl px-5 py-4 max-w-xs border border-white/10">
+            <p className="text-white/80 text-xs text-center leading-relaxed">
+              Demorando demais? Pode ser um cache local travado neste navegador
+              (acontece principalmente após atualizações do sistema).
+            </p>
+            <button
+              type="button"
+              onClick={handleStuckReset}
+              className="text-xs font-bold bg-white text-indigo-600 hover:bg-indigo-50 transition rounded-xl px-4 py-2"
+            >
+              Limpar cache e recarregar
+            </button>
+          </div>
         )}
       </div>
     </div>

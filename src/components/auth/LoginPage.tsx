@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { hardReset } from '@/utils/hardReset';
 
 const GOOGLE_INVITE_KEY = 'gestao3d_pending_google_invite';
 
@@ -18,6 +19,18 @@ export function LoginPage({ onShowSignup }: Props) {
   const [success, setSuccess]   = useState('');
   const [loading, setLoading]       = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  // Limpeza profunda — última cartada quando o cache do navegador trava o login
+  const handleHardReset = async () => {
+    if (resetting) return;
+    const ok = window.confirm(
+      'Isso vai limpar dados locais do app neste navegador (sessão, cache, cookies do site) e recarregar a página. Você continuará com sua conta no servidor — só precisa fazer login de novo. Continuar?'
+    );
+    if (!ok) return;
+    setResetting(true);
+    await hardReset(true);
+  };
 
   // ── Google OAuth — step de convite ────────────────────────────────────────
   const [googleStep, setGoogleStep]   = useState<GoogleStep>('idle');
@@ -366,7 +379,17 @@ export function LoginPage({ onShowSignup }: Props) {
           )}
         </div>
 
-        <p className="text-center text-xs text-gray-300 mt-6">Gestão 3D v3.12 · Powered by Supabase</p>
+        <div className="mt-6 flex flex-col items-center gap-2">
+          <button
+            type="button"
+            onClick={handleHardReset}
+            disabled={resetting}
+            className="text-xs text-gray-400 hover:text-indigo-500 underline transition disabled:opacity-50"
+          >
+            {resetting ? 'Limpando dados locais…' : 'Tendo problemas para entrar? Limpar dados deste navegador'}
+          </button>
+          <p className="text-center text-xs text-gray-300">Gestão 3D v3.12 · Powered by Supabase</p>
+        </div>
       </div>
     </div>
   );
