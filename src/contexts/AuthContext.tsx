@@ -3,8 +3,35 @@ import { supabase } from '@/lib/supabase';
 import { adoptLegacyData } from '@/lib/db';
 import type { AuthContextType, User, UserRole } from '@/types';
 
-const GOOGLE_INVITE_KEY = 'gestao3d_pending_google_invite';
-const ACTIVE_TENANT_KEY = 'gestao3d_active_tenant';
+const GOOGLE_INVITE_KEY   = 'gestao3d_pending_google_invite';
+const ACTIVE_TENANT_KEY   = 'gestao3d_active_tenant';
+const GOOGLE_VERIFIED_KEY = 'gestao3d_google_verified_uid';
+
+/**
+ * Lê a sessão Supabase direto do localStorage (sem rede).
+ * Usado para inicialização otimista — evita loading screen para usuários que
+ * já fizeram login antes e têm token ainda válido ou refreshável.
+ */
+function readLocalSession(): User | null {
+  try {
+    const key = Object.keys(localStorage)
+      .find((k) => k.startsWith('sb-') && k.endsWith('-auth-token'));
+    if (!key) return null;
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const { user: sbUser, expires_at } = JSON.parse(raw) as {
+      user?: Record<string, unknown>;
+      expires_at?: number;
+    };
+    if (!sbUser || !expires_at) return null;
+    const now = Math.floor(Date.now() / 1000);
+    // Aceita até 5 min expirado — Supabase consegue refresh nessa janela
+    if (expires_at < now - 300) return null;
+    return toUser(sbUser as Parameters<typeof toUser>[0]);
+  } catch {
+    return null;
+  }
+}
 
 function purgeStaleAuth(): void {
   try {
@@ -61,14 +88,18 @@ function traduzirErro(msg: string): string {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser]               = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  // Inicialização otimista: se há sessão válida no localStorage, não mostra loading
+  const localUser = readLocalSession();
+  const [user, setUser]               = useState<User | null>(localUser);
+  const [authLoading, setAuthLoading] = useState(!localUser);
   const [googleBlockedError, setGoogleBlockedError] = useState<string | null>(null);
 
   const clearGoogleBlockedError = useCallback(() => setGoogleBlockedError(null), []);
 
   useEffect(() => {
-    const loadingTimeout = setTimeout(() => { setAuthLoading(false); }, 6000);
+    // Se já temos usuário local, o timeout é mais curto (só refresh de segurança)
+    const timeoutMs = localUser ? 10000 : 6000;
+    const loadingTimeout = setTimeout(() => { setAuthLoading(false); }, timeoutMs);
 
     supabase.auth.getSession().then(({ data, error }) => {
       clearTimeout(loadingTimeout);
@@ -97,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             localStorage.removeItem(ACTIVE_TENANT_KEY);
             localStorage.removeItem(GOOGLE_INVITE_KEY);
+            localStorage.removeItem(GOOGLE_VERIFIED_KEY);
           } catch { /* ignora */ }
         }
         setUser(null);
@@ -104,10 +136,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const sbUser = session.user;
+
+      // TOKEN_REFRESHED: apenas atualiza o usuário, nunca bloqueia em queries
+      if (event === 'TOKEN_REFRESHED') {
+        setUser(toUser(sbUser));
+        return;
+      }
+
       const isGoogleProvider = sbUser.app_metadata?.provider === 'google'
         || (sbUser.app_metadata?.providers as string[] | undefined)?.includes('google');
 
-      if (isGoogleProvider && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+      // Usuário Google já verificado anteriormente → deixa entrar sem query
+      if (isGoogleProvider && localStorage.getItem(GOOGLE_VERIFIED_KEY) === sbUser.id) {
+        setUser(toUser(sbUser));
+        return;
+      }
+
+      if (isGoogleProvider && event === 'SIGNED_IN') {
         const { data: memberships } = await supabase
           .from('tenant_memberships')
           .select('id')
@@ -145,6 +190,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           localStorage.removeItem(GOOGLE_INVITE_KEY);
         }
+
+        // Marca como verificado para as próximas visitas (evita re-query)
+        try { localStorage.setItem(GOOGLE_VERIFIED_KEY, sbUser.id); } catch { /* ignora */ }
       }
 
       setUser(toUser(sbUser));
@@ -154,7 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(loadingTimeout);
       subscription.unsubscribe();
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const login = useCallback(async (email: string, password: string): Promise<string | null> => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });

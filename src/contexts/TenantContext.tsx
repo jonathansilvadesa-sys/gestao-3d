@@ -18,6 +18,15 @@ import { setActiveTenant, migrateUserDataToTenant } from '@/lib/db';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tenant, TenantMember, TenantRole, TenantContextType } from '@/types';
 
+const TENANT_CACHE_KEY = 'gestao3d_tenant_cache';
+
+function readLocalTenant(): Tenant | null {
+  try {
+    const raw = localStorage.getItem(TENANT_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as Tenant) : null;
+  } catch { return null; }
+}
+
 const TenantContext = createContext<TenantContextType | null>(null);
 
 export function useTenant(): TenantContextType {
@@ -31,11 +40,13 @@ interface Props { children: ReactNode; }
 export function TenantProvider({ children }: Props) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
-  const [tenant, setTenant]         = useState<Tenant | null>(null);
+  // Inicialização otimista: usa tenant cacheado no localStorage para não travar a UI
+  const localTenant = readLocalTenant();
+  const [tenant, setTenant]         = useState<Tenant | null>(localTenant);
   const [myRole, setMyRole]         = useState<TenantRole | null>(null);
   const [members, setMembers]       = useState<TenantMember[]>([]);
   const [allTenants, setAllTenants] = useState<Tenant[]>([]);
-  const [tenantLoading, setTenantLoading] = useState(true);
+  const [tenantLoading, setTenantLoading] = useState(!localTenant);
 
   // ── Carrega tenant do usuário ───────────────────────────────────────────────
   const loadTenant = useCallback(async (uid: string) => {
@@ -76,10 +87,13 @@ export function TenantProvider({ children }: Props) {
       const activeTenant = active.tenants as unknown as Tenant;
       const activeRole   = active.role as TenantRole;
 
-      setTenant(mapTenant(activeTenant as unknown as Record<string, unknown>));
+      const mappedTenant = mapTenant(activeTenant as unknown as Record<string, unknown>);
+      setTenant(mappedTenant);
       setMyRole(activeRole);
       setActiveTenant(activeTenant.id);
       localStorage.setItem('gestao3d_active_tenant', activeTenant.id);
+      // Persiste tenant no cache para inicialização otimista nas próximas visitas
+      try { localStorage.setItem(TENANT_CACHE_KEY, JSON.stringify(mappedTenant)); } catch { /* ignora */ }
 
       // Developer: carrega todos os tenants
       if (activeRole === 'developer') {
@@ -124,6 +138,7 @@ export function TenantProvider({ children }: Props) {
       setAllTenants([]);
       setActiveTenant(null);
       setTenantLoading(false);
+      try { localStorage.removeItem(TENANT_CACHE_KEY); } catch { /* ignora */ }
     }
   }, [userId, loadTenant]);
 

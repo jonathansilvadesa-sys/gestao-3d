@@ -30,21 +30,27 @@ self.addEventListener('install', (event) => {
         console.warn('[SW] precache parcial:', e);
       }),
     ),
-    // Sem self.skipWaiting(): aguarda o usuário recarregar (UpdatePrompt cuida disso)
   );
+  // Ativa imediatamente sem esperar fechar todas as abas.
+  // Necessário para que novos deploys propaguem o JS atualizado na mesma sessão.
+  self.skipWaiting();
 });
 
-// ── Ativação — limpa caches antigos com prefixo gestao3d- ────────────────────
+// ── Ativação — limpa caches antigos e assume controle de todas as abas ───────
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((k) => k.startsWith('gestao3d-') && k !== CACHE_NAME && k !== HTML_CACHE)
-          .map((k) => caches.delete(k)),
+    Promise.all([
+      // Assume controle imediato de todas as abas abertas
+      self.clients.claim(),
+      // Remove caches de builds anteriores
+      caches.keys().then((keys) =>
+        Promise.all(
+          keys
+            .filter((k) => k.startsWith('gestao3d-') && k !== CACHE_NAME && k !== HTML_CACHE)
+            .map((k) => caches.delete(k)),
+        ),
       ),
-    ),
-    // Sem self.clients.claim(): só assume controle no próximo carregamento
+    ]),
   );
 });
 
