@@ -33,10 +33,11 @@ export function LoginPage({ onShowSignup }: Props) {
   };
 
   // ── Google OAuth — step de convite ────────────────────────────────────────
-  const [googleStep, setGoogleStep]   = useState<GoogleStep>('idle');
-  const [inviteCode, setInviteCode]   = useState('');
-  const [inviteError, setInviteError] = useState('');
+  const [googleStep, setGoogleStep]       = useState<GoogleStep>('idle');
+  const [inviteCode, setInviteCode]       = useState('');
+  const [inviteError, setInviteError]     = useState('');
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteTenantNome, setInviteTenantNome] = useState<string | null>(null);
 
   // Lê ?invite= da URL ao montar (link de convite por email)
   useEffect(() => {
@@ -53,16 +54,35 @@ export function LoginPage({ onShowSignup }: Props) {
   }, []);
 
   // Formata o código enquanto digita (auto-maiúsculas e traço)
-  const handleInviteCode = (v: string) => {
+  // + lookup em tempo real do nome da empresa quando o código completa 8 chars
+  const handleInviteCode = async (v: string) => {
     const clean = v.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (clean.length <= 4) setInviteCode(clean);
-    else setInviteCode(clean.slice(0, 4) + '-' + clean.slice(4, 8));
+    const formatted = clean.length <= 4 ? clean : clean.slice(0, 4) + '-' + clean.slice(4, 8);
+    setInviteCode(formatted);
+    setInviteError('');
+
+    // Quando o código fica completo (8 chars), busca o nome da empresa
+    if (clean.length === 8) {
+      const code = clean.slice(0, 4) + '-' + clean.slice(4);
+      try {
+        const { data } = await supabase.rpc('get_invite_info', { p_code: code });
+        const info = Array.isArray(data) ? data[0] : data;
+        if (info?.valido && info?.tenant_nome) {
+          setInviteTenantNome(info.tenant_nome as string);
+        } else {
+          setInviteTenantNome(null);
+        }
+      } catch { setInviteTenantNome(null); }
+    } else {
+      setInviteTenantNome(null);
+    }
   };
 
   // Clique inicial no botão Google → abre o step de convite
   const handleGoogleClick = () => {
     setInviteCode('');
     setInviteError('');
+    setInviteTenantNome(null);
     clearGoogleBlockedError();
     setGoogleStep('invite');
   };
@@ -80,28 +100,29 @@ export function LoginPage({ onShowSignup }: Props) {
 
     setInviteLoading(true);
 
-    // Valida o código no Supabase antes de redirecionar
-    const { data: invite, error: invErr } = await supabase
-      .from('invites')
-      .select('id, code, usado, expira_em')
-      .eq('code', inviteCode.toUpperCase())
-      .maybeSingle();
+    // Valida o código via RPC (que também retorna o nome da empresa)
+    const { data: rpcData } = await supabase
+      .rpc('get_invite_info', { p_code: inviteCode.toUpperCase() });
 
-    if (invErr || !invite) {
+    const info = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+
+    if (!info) {
       setInviteError('Código de convite não encontrado.');
       setInviteLoading(false);
       return;
     }
-    if (invite.usado) {
-      setInviteError('Este código de convite já foi utilizado.');
+    if (!info.valido) {
+      // Pode ser expirado ou já usado — verifica a data
+      if (info.expira_em && new Date(info.expira_em as string) < new Date()) {
+        setInviteError('Este código de convite expirou.');
+      } else {
+        setInviteError('Este código de convite já foi utilizado ou é inválido.');
+      }
       setInviteLoading(false);
       return;
     }
-    if (invite.expira_em && new Date(invite.expira_em) < new Date()) {
-      setInviteError('Este código de convite expirou.');
-      setInviteLoading(false);
-      return;
-    }
+
+    if (info.tenant_nome) setInviteTenantNome(info.tenant_nome as string);
 
     // Guarda o código para uso pós-retorno do OAuth
     localStorage.setItem(GOOGLE_INVITE_KEY, inviteCode.toUpperCase());
@@ -179,11 +200,12 @@ export function LoginPage({ onShowSignup }: Props) {
                   <div className="flex items-center gap-2 mb-1">
                     <button
                       type="button"
-                      onClick={() => { setGoogleStep('idle'); setInviteError(''); }}
+                      onClick={() => { setGoogleStep('idle'); setInviteError(''); setInviteTenantNome(null); }}
                       className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 transition text-lg"
                     >←</button>
                     <span className="text-sm font-semibold text-gray-600">Código de convite para continuar com Google</span>
                   </div>
+
                   <input
                     type="text"
                     value={inviteCode}
@@ -192,8 +214,24 @@ export function LoginPage({ onShowSignup }: Props) {
                     required
                     maxLength={9}
                     autoFocus
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-indigo-400 uppercase"
+                    className={`w-full border rounded-xl px-4 py-3 text-sm font-mono tracking-widest text-center focus:outline-none focus:ring-2 uppercase transition ${
+                      inviteTenantNome
+                        ? 'border-emerald-300 focus:ring-emerald-400 bg-emerald-50'
+                        : 'border-gray-200 focus:ring-indigo-400'
+                    }`}
                   />
+
+                  {/* Nome da empresa — aparece após validar o código */}
+                  {inviteTenantNome && (
+                    <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-4 py-2.5 text-sm">
+                      <span className="text-base">🏢</span>
+                      <div>
+                        <p className="font-semibold">{inviteTenantNome}</p>
+                        <p className="text-xs text-emerald-600">Você será adicionado a esta empresa</p>
+                      </div>
+                    </div>
+                  )}
+
                   {inviteError && (
                     <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm">
                       {inviteError}

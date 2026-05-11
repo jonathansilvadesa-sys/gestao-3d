@@ -30,25 +30,51 @@ export function SignupPage({ onBack }: Props) {
   const [loading,       setLoading]       = useState(false);
   const [error,         setError]         = useState('');
   const [confirmEmail,  setConfirmEmail]  = useState(false);
+  const [inviteTenantNome, setInviteTenantNome] = useState<string | null>(null);
 
-  // Lê ?invite= da URL ao montar (link de convite por email)
+  // Lê ?invite= da URL ao montar (link de convite por email) e busca nome da empresa
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlInvite = params.get('invite');
     if (urlInvite) {
       const clean = urlInvite.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
-      setCodigo(clean.length > 4 ? clean.slice(0,4) + '-' + clean.slice(4) : clean);
+      const formatted = clean.length > 4 ? clean.slice(0,4) + '-' + clean.slice(4) : clean;
+      setCodigo(formatted);
       window.history.replaceState({}, '', window.location.pathname);
+      // Busca nome da empresa automaticamente
+      if (clean.length === 8) {
+        const code = clean.slice(0, 4) + '-' + clean.slice(4);
+        void supabase.rpc('get_invite_info', { p_code: code }).then(({ data }) => {
+          const info = Array.isArray(data) ? data[0] : data;
+          if (info?.valido && info?.tenant_nome) {
+            setInviteTenantNome(info.tenant_nome as string);
+            setEmpresa((prev) => prev || (info.tenant_nome as string));
+          }
+        });
+      }
     }
   }, []);
 
-  // Formata o código enquanto digita (auto-maiúsculas e traço)
-  const handleCodigo = (v: string) => {
+  // Formata o código enquanto digita + lookup do nome da empresa
+  const handleCodigo = async (v: string) => {
     const clean = v.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (clean.length <= 4) {
-      setCodigo(clean);
+    const formatted = clean.length <= 4 ? clean : clean.slice(0, 4) + '-' + clean.slice(4, 8);
+    setCodigo(formatted);
+
+    if (clean.length === 8) {
+      const code = clean.slice(0, 4) + '-' + clean.slice(4);
+      try {
+        const { data } = await supabase.rpc('get_invite_info', { p_code: code });
+        const info = Array.isArray(data) ? data[0] : data;
+        if (info?.valido && info?.tenant_nome) {
+          setInviteTenantNome(info.tenant_nome as string);
+          setEmpresa((prev) => prev || (info.tenant_nome as string));
+        } else {
+          setInviteTenantNome(null);
+        }
+      } catch { setInviteTenantNome(null); }
     } else {
-      setCodigo(clean.slice(0, 4) + '-' + clean.slice(4, 8));
+      setInviteTenantNome(null);
     }
   };
 
@@ -73,28 +99,37 @@ export function SignupPage({ onBack }: Props) {
 
     setLoading(true);
 
-    // 1. Valida o código no Supabase
-    const { data: invite, error: invErr } = await supabase
-      .from('invites')
-      .select('id, code, usado, expira_em')
-      .eq('code', codigo.toUpperCase())
-      .maybeSingle();
+    // 1. Valida o código via RPC (retorna nome da empresa + validade)
+    const { data: rpcData } = await supabase
+      .rpc('get_invite_info', { p_code: codigo.toUpperCase() });
 
-    if (invErr || !invite) {
+    const info = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+
+    if (!info) {
       setError('Código de convite não encontrado.');
       setLoading(false);
       return;
     }
-    if (invite.usado) {
-      setError('Este código de convite já foi utilizado.');
+    if (!info.valido) {
+      if (info.expira_em && new Date(info.expira_em as string) < new Date()) {
+        setError('Este código de convite expirou.');
+      } else {
+        setError('Este código de convite já foi utilizado ou é inválido.');
+      }
       setLoading(false);
       return;
     }
-    if (invite.expira_em && new Date(invite.expira_em) < new Date()) {
-      setError('Este código de convite expirou.');
-      setLoading(false);
-      return;
+    // Usa o nome da empresa do convite se o campo estiver vazio
+    if (info.tenant_nome && !empresa.trim()) {
+      setEmpresa(info.tenant_nome as string);
     }
+
+    // Busca o id do invite para marcar como usado depois
+    const { data: invite } = await supabase
+      .from('invites')
+      .select('id')
+      .eq('code', codigo.toUpperCase())
+      .maybeSingle();
 
     // 2. Cria a conta
     const err = await signup(email.trim(), senha, nome.trim(), empresa.trim());
@@ -104,10 +139,12 @@ export function SignupPage({ onBack }: Props) {
       setConfirmEmail(true);
       setLoading(false);
       // Marca o convite como usado mesmo assim (evita reuso)
-      await supabase
-        .from('invites')
-        .update({ usado: true, usado_em: new Date().toISOString() })
-        .eq('id', invite.id);
+      if (invite?.id) {
+        await supabase
+          .from('invites')
+          .update({ usado: true, usado_em: new Date().toISOString() })
+          .eq('id', invite.id);
+      }
       return;
     }
 
@@ -120,10 +157,12 @@ export function SignupPage({ onBack }: Props) {
     // 3. Marca o convite como usado (usuário agora está autenticado)
     const { data: session } = await supabase.auth.getSession();
     const userId = session?.session?.user?.id;
-    await supabase
-      .from('invites')
-      .update({ usado: true, usado_por: userId ?? null, usado_em: new Date().toISOString() })
-      .eq('id', invite.id);
+    if (invite?.id) {
+      await supabase
+        .from('invites')
+        .update({ usado: true, usado_por: userId ?? null, usado_em: new Date().toISOString() })
+        .eq('id', invite.id);
+    }
 
     // Sucesso → onAuthStateChange do Supabase dispara automaticamente,
     // AuthContext atualiza user, TenantContext detecta sem tenant → OnboardingTenant
@@ -292,11 +331,25 @@ export function SignupPage({ onBack }: Props) {
                 placeholder="XXXX-XXXX"
                 required
                 maxLength={9}
-                className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-indigo-400 uppercase"
+                className={`mt-1 w-full border rounded-xl px-4 py-3 text-sm font-mono tracking-widest text-center focus:outline-none focus:ring-2 uppercase transition ${
+                  inviteTenantNome
+                    ? 'border-emerald-300 focus:ring-emerald-400 bg-emerald-50'
+                    : 'border-gray-200 focus:ring-indigo-400'
+                }`}
               />
-              <p className="text-xs text-gray-400 mt-1">
-                Solicite um código ao administrador do sistema.
-              </p>
+              {inviteTenantNome ? (
+                <div className="flex items-center gap-2 mt-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-3 py-2 text-sm">
+                  <span>🏢</span>
+                  <div>
+                    <p className="font-semibold">{inviteTenantNome}</p>
+                    <p className="text-xs text-emerald-600">Você será adicionado a esta empresa</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 mt-1">
+                  Solicite um código ao administrador do sistema.
+                </p>
+              )}
             </div>
 
             {error && (

@@ -115,15 +115,22 @@ export function TenantProvider({ children }: Props) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Carrega membros do tenant ───────────────────────────────────────────────
+  // Usa get_tenant_members_info (SECURITY DEFINER) para obter nome + email
+  // de cada membro, que não ficam disponíveis via query direta em tenant_memberships.
   const loadMembers = async (tenantId: string) => {
     const { data, error } = await supabase
-      .from('tenant_memberships')
-      .select('id, tenant_id, user_id, role, ativo, criado_em')
-      .eq('tenant_id', tenantId)
-      .eq('ativo', true);
+      .rpc('get_tenant_members_info', { p_tenant_id: tenantId });
 
     if (!error && data) {
-      setMembers(data.map(mapMember));
+      setMembers((data as Record<string, unknown>[]).map(mapMemberFromRPC));
+    } else {
+      // Fallback: query simples sem nome/email (não deveria acontecer em produção)
+      const { data: fallback } = await supabase
+        .from('tenant_memberships')
+        .select('id, tenant_id, user_id, role, ativo, criado_em')
+        .eq('tenant_id', tenantId)
+        .eq('ativo', true);
+      if (fallback) setMembers(fallback.map(mapMember));
     }
   };
 
@@ -323,5 +330,21 @@ function mapMember(raw: Record<string, unknown>): TenantMember {
     role:     raw.role as TenantRole,
     ativo:    raw.ativo as boolean ?? true,
     criadoEm: raw.criado_em as string,
+  };
+}
+
+// Mapeia resultado do RPC get_tenant_members_info (inclui email + nome)
+function mapMemberFromRPC(raw: Record<string, unknown>): TenantMember {
+  const nome  = (raw.nome  as string | null) ?? undefined;
+  const email = (raw.email as string | null) ?? undefined;
+  return {
+    id:       raw.membership_id as string,
+    tenantId: raw.tenant_id     as string ?? '',
+    userId:   raw.user_id       as string,
+    email,
+    nome:     nome ?? (email ? email.split('@')[0] : undefined),
+    role:     raw.role          as TenantRole,
+    ativo:    (raw.ativo        as boolean) ?? true,
+    criadoEm: raw.criado_em     as string,
   };
 }
