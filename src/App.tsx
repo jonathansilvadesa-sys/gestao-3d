@@ -23,6 +23,7 @@ import { QuickActionFAB }       from '@/components/shared/QuickActionFAB';
 import { GlobalSearch }         from '@/components/shared/GlobalSearch';
 import { SkeletonDashboard }    from '@/components/shared/Skeleton';
 import { OfflineBanner }        from '@/components/shared/OfflineBanner';
+import { KanbanTab }            from '@/components/kanban/KanbanTab';
 import { hardReset }              from '@/utils/hardReset';
 import { pedirPermissaoNotificacao, notificarEstoqueZerado } from '@/utils/notifications';
 import type { AppTab, Product, EstoqueMovimento } from '@/types';
@@ -210,6 +211,7 @@ export default function App() {
         )}
             {tab === 'materiais' && <MateriaisTab />}
             {tab === 'pedidos'   && <PedidosTab />}
+            {tab === 'kanban'    && <KanbanTab />}
             {tab === 'estoque' && (
               <EstoqueTab
             products={products}

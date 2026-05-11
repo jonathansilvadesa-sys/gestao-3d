@@ -478,7 +478,46 @@ export interface PermissionsContextType {
 }
 
 // ─── Tabs da aplicação ────────────────────────────────────────────────────────
-export type AppTab = 'dashboard' | 'produtos' | 'estoque' | 'materiais' | 'pedidos';
+export type AppTab = 'dashboard' | 'produtos' | 'estoque' | 'materiais' | 'pedidos' | 'kanban';
+
+// ─── Kanban de Tarefas ────────────────────────────────────────────────────────
+export type TarefaStatus =
+  | 'fila'
+  | 'imprimindo'
+  | 'pos_processo'
+  | 'verificacao'
+  | 'pronto'
+  | 'entregue';
+
+export type TarefaPrioridade = 'alta' | 'media' | 'baixa';
+
+export interface Tarefa {
+  id:               string;
+  tenantId:         string;
+  titulo:           string;
+  descricao?:       string;
+  status:           TarefaStatus;
+  prioridade:       TarefaPrioridade;
+  produtoId?:       string;
+  produtoNome?:     string;
+  quantidade:       number;
+  responsavelId?:   string;
+  responsavelNome?: string;
+  prazo?:           string; // ISO date YYYY-MM-DD
+  notas?:           string;
+  criadoPor?:       string;
+  criadoEm:         string;
+  atualizadoEm:     string;
+}
+
+export interface TarefaContextType {
+  tarefas:       Tarefa[];
+  loading:       boolean;
+  createTarefa:  (t: Omit<Tarefa, 'id' | 'tenantId' | 'criadoEm' | 'atualizadoEm'>) => Promise<string | null>;
+  updateTarefa:  (id: string, updates: Partial<Tarefa>) => Promise<string | null>;
+  deleteTarefa:  (id: string) => Promise<void>;
+  moveStatus:    (id: string, newStatus: TarefaStatus) => Promise<void>;
+}
 
 // ─── Pedidos ──────────────────────────────────────────────────────────────────
 export type PedidoStatus =

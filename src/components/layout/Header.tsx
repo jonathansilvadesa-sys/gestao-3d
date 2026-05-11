@@ -24,6 +24,7 @@ const TABS: { key: AppTab; label: string; icon: string }[] = [
   { key: 'materiais', label: 'Materiais', icon: '🧵' },
   { key: 'estoque',   label: 'Estoque',   icon: '📦' },
   { key: 'pedidos',   label: 'Pedidos',   icon: '🧾' },
+  { key: 'kanban',    label: 'Tarefas',   icon: '📋' },
 ];
 
 export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakEvenCount = 0 }: HeaderProps) {

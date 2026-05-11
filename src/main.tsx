@@ -13,6 +13,7 @@ import { PedidosProvider }   from '@/contexts/PedidosContext';
 import { ToastProvider }     from '@/contexts/ToastContext';
 import { TourProvider }         from '@/contexts/TourContext';
 import { PermissionsProvider }  from '@/contexts/PermissionsContext';
+import { TarefaProvider }      from '@/contexts/TarefaContext';
 import { UpdatePrompt }     from '@/components/shared/UpdatePrompt';
 import './index.css';
 import App from './App';
@@ -132,9 +133,11 @@ createRoot(document.getElementById('root')!).render(
                       <PedidosProvider>
                         <ToastProvider>
                           <PermissionsProvider>
+                          <TarefaProvider>
                           <TourProvider>
                             <App />
                           </TourProvider>
+                          </TarefaProvider>
                         </PermissionsProvider>
                         </ToastProvider>
                       </PedidosProvider>
