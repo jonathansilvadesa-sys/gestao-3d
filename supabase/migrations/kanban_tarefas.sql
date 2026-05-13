@@ -48,6 +48,12 @@ CREATE TRIGGER tarefas_updated_at
 -- ── RLS ───────────────────────────────────────────────────────────────────────
 ALTER TABLE public.tarefas ENABLE ROW LEVEL SECURITY;
 
+-- Remove policies existentes antes de recriar (idempotente)
+DROP POLICY IF EXISTS "tarefas_select" ON public.tarefas;
+DROP POLICY IF EXISTS "tarefas_insert" ON public.tarefas;
+DROP POLICY IF EXISTS "tarefas_update" ON public.tarefas;
+DROP POLICY IF EXISTS "tarefas_delete" ON public.tarefas;
+
 -- Apenas membros ativos do tenant acessam
 CREATE POLICY "tarefas_select" ON public.tarefas FOR SELECT
   USING (EXISTS (
