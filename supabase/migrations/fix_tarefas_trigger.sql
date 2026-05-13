@@ -25,3 +25,8 @@ $$;
 CREATE TRIGGER tarefas_updated_at
   BEFORE UPDATE ON public.tarefas
   FOR EACH ROW EXECUTE FUNCTION public.set_tarefas_atualizado_em();
+
+-- ── GRANTs explícitos (Supabase passará a exigir isso em out/2025) ────────────
+-- Garante que usuários autenticados consigam acessar a tabela via supabase-js.
+-- Rodar mesmo que já tenha rodado kanban_tarefas.sql antes da mudança.
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.tarefas TO authenticated;

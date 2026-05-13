@@ -28,11 +28,22 @@ CREATE TABLE IF NOT EXISTS public.tarefas (
 CREATE INDEX IF NOT EXISTS tarefas_tenant_idx        ON public.tarefas (tenant_id);
 CREATE INDEX IF NOT EXISTS tarefas_tenant_status_idx ON public.tarefas (tenant_id, status);
 
--- Trigger de updated_at (função já existe de migrations anteriores)
+-- Trigger de atualizado_em (função dedicada — a genérica usa NEW.updated_at, não atualizado_em)
+CREATE OR REPLACE FUNCTION public.set_tarefas_atualizado_em()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+  NEW.atualizado_em = NOW();
+  RETURN NEW;
+END;
+$$;
+
 DROP TRIGGER IF EXISTS tarefas_updated_at ON public.tarefas;
 CREATE TRIGGER tarefas_updated_at
   BEFORE UPDATE ON public.tarefas
-  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION public.set_tarefas_atualizado_em();
 
 -- ── RLS ───────────────────────────────────────────────────────────────────────
 ALTER TABLE public.tarefas ENABLE ROW LEVEL SECURITY;
@@ -61,3 +72,8 @@ CREATE POLICY "tarefas_delete" ON public.tarefas FOR DELETE
     SELECT 1 FROM public.tenant_memberships m
     WHERE m.tenant_id = tarefas.tenant_id AND m.user_id = auth.uid() AND m.ativo = true
   ));
+
+-- ── GRANTs explícitos (exigidos pelo Supabase a partir de out/2025) ───────────
+-- RLS sozinho não é suficiente; sem GRANT a tabela não aparece no Data API.
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.tarefas TO authenticated;
+GRANT USAGE ON SEQUENCE public.tarefas_id_seq TO authenticated; -- caso mude para serial
