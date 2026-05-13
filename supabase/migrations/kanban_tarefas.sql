@@ -82,4 +82,3 @@ CREATE POLICY "tarefas_delete" ON public.tarefas FOR DELETE
 -- ── GRANTs explícitos (exigidos pelo Supabase a partir de out/2025) ───────────
 -- RLS sozinho não é suficiente; sem GRANT a tabela não aparece no Data API.
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.tarefas TO authenticated;
-GRANT USAGE ON SEQUENCE public.tarefas_id_seq TO authenticated; -- caso mude para serial
