@@ -131,6 +131,7 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
               <button
                 onClick={onSearch}
                 title="Busca global (Ctrl+K)"
+                aria-label="Busca global"
                 className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center transition text-gray-500 dark:text-gray-300"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -144,6 +145,7 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
             <button
               onClick={toggleTheme}
               title={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
+              aria-label={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
               className="hidden sm:flex w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 items-center justify-center transition text-gray-500 dark:text-gray-300"
             >
               {theme === 'dark' ? (
@@ -170,6 +172,9 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
               <button
                 onClick={() => setShowNotif((v) => !v)}
                 title="Notificações e alertas"
+                aria-label={totalAlertas > 0 ? `Notificações — ${totalAlertas} alerta${totalAlertas !== 1 ? 's' : ''}` : 'Notificações'}
+                aria-expanded={showNotif}
+                aria-haspopup="true"
                 className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center transition text-gray-500 dark:text-gray-300 relative"
               >
                 {/* Ícone sino */}
@@ -383,6 +388,9 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu((v) => !v)}
+                aria-label={`Menu do usuário — ${user?.nome ?? 'Perfil'}`}
+                aria-expanded={showUserMenu}
+                aria-haspopup="true"
                 className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold flex items-center justify-center text-sm"
               >
                 {user?.avatar ?? '?'}

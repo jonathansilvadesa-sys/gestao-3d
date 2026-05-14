@@ -55,28 +55,30 @@ DROP POLICY IF EXISTS "tarefas_update" ON public.tarefas;
 DROP POLICY IF EXISTS "tarefas_delete" ON public.tarefas;
 
 -- Apenas membros ativos do tenant acessam
+-- Nota: (SELECT auth.uid()) é avaliado UMA VEZ por query (cached),
+-- enquanto auth.uid() sem SELECT é avaliado POR LINHA → 100x mais lento em tabelas grandes.
 CREATE POLICY "tarefas_select" ON public.tarefas FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM public.tenant_memberships m
-    WHERE m.tenant_id = tarefas.tenant_id AND m.user_id = auth.uid() AND m.ativo = true
+    WHERE m.tenant_id = tarefas.tenant_id AND m.user_id = (SELECT auth.uid()) AND m.ativo = true
   ));
 
 CREATE POLICY "tarefas_insert" ON public.tarefas FOR INSERT
   WITH CHECK (EXISTS (
     SELECT 1 FROM public.tenant_memberships m
-    WHERE m.tenant_id = tarefas.tenant_id AND m.user_id = auth.uid() AND m.ativo = true
+    WHERE m.tenant_id = tarefas.tenant_id AND m.user_id = (SELECT auth.uid()) AND m.ativo = true
   ));
 
 CREATE POLICY "tarefas_update" ON public.tarefas FOR UPDATE
   USING (EXISTS (
     SELECT 1 FROM public.tenant_memberships m
-    WHERE m.tenant_id = tarefas.tenant_id AND m.user_id = auth.uid() AND m.ativo = true
+    WHERE m.tenant_id = tarefas.tenant_id AND m.user_id = (SELECT auth.uid()) AND m.ativo = true
   ));
 
 CREATE POLICY "tarefas_delete" ON public.tarefas FOR DELETE
   USING (EXISTS (
     SELECT 1 FROM public.tenant_memberships m
-    WHERE m.tenant_id = tarefas.tenant_id AND m.user_id = auth.uid() AND m.ativo = true
+    WHERE m.tenant_id = tarefas.tenant_id AND m.user_id = (SELECT auth.uid()) AND m.ativo = true
   ));
 
 -- ── GRANTs explícitos (exigidos pelo Supabase a partir de out/2025) ───────────
