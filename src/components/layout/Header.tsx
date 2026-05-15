@@ -7,6 +7,10 @@ import { useHardware }     from '@/contexts/HardwareContext';
 import { usePermissions }  from '@/contexts/PermissionsContext';
 import { SettingsModal }   from '@/components/settings/SettingsModal';
 import { DeveloperBadge }  from '@/components/admin/DeveloperPanel';
+import {
+  IconDashboard, IconProdutos, IconMateriais,
+  IconEstoque, IconPedidos, IconKanban,
+} from '@/components/layout/TabIcons';
 import type { AppTab } from '@/types';
 
 interface HeaderProps {
@@ -18,13 +22,13 @@ interface HeaderProps {
   breakEvenCount?: number;
 }
 
-const TABS: { key: AppTab; label: string; icon: string }[] = [
-  { key: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { key: 'produtos',  label: 'Produtos',  icon: '🖨️' },
-  { key: 'materiais', label: 'Materiais', icon: '🧵' },
-  { key: 'estoque',   label: 'Estoque',   icon: '📦' },
-  { key: 'pedidos',   label: 'Pedidos',   icon: '🧾' },
-  { key: 'kanban',    label: 'Tarefas',   icon: '📋' },
+const TABS: { key: AppTab; label: string; icon: JSX.Element }[] = [
+  { key: 'dashboard', label: 'Dashboard', icon: <IconDashboard size={16} /> },
+  { key: 'produtos',  label: 'Produtos',  icon: <IconProdutos  size={16} /> },
+  { key: 'materiais', label: 'Materiais', icon: <IconMateriais size={16} /> },
+  { key: 'estoque',   label: 'Estoque',   icon: <IconEstoque   size={16} /> },
+  { key: 'pedidos',   label: 'Pedidos',   icon: <IconPedidos   size={16} /> },
+  { key: 'kanban',    label: 'Tarefas',   icon: <IconKanban    size={16} /> },
 ];
 
 export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakEvenCount = 0 }: HeaderProps) {
@@ -132,7 +136,7 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
                 onClick={onSearch}
                 title="Busca global (Ctrl+K)"
                 aria-label="Busca global"
-                className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center transition text-gray-500 dark:text-gray-300"
+                className="w-11 h-11 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center transition text-gray-500 dark:text-gray-300"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8"/>
@@ -146,7 +150,7 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
               onClick={toggleTheme}
               title={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
               aria-label={theme === 'dark' ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
-              className="hidden sm:flex w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 items-center justify-center transition text-gray-500 dark:text-gray-300"
+              className="hidden sm:flex w-11 h-11 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 items-center justify-center transition text-gray-500 dark:text-gray-300"
             >
               {theme === 'dark' ? (
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -175,7 +179,7 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
                 aria-label={totalAlertas > 0 ? `Notificações — ${totalAlertas} alerta${totalAlertas !== 1 ? 's' : ''}` : 'Notificações'}
                 aria-expanded={showNotif}
                 aria-haspopup="true"
-                className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center transition text-gray-500 dark:text-gray-300 relative"
+                className="w-11 h-11 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center transition text-gray-500 dark:text-gray-300 relative"
               >
                 {/* Ícone sino */}
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -391,7 +395,7 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
                 aria-label={`Menu do usuário — ${user?.nome ?? 'Perfil'}`}
                 aria-expanded={showUserMenu}
                 aria-haspopup="true"
-                className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold flex items-center justify-center text-sm"
+                className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold flex items-center justify-center text-sm"
               >
                 {user?.avatar ?? '?'}
               </button>
