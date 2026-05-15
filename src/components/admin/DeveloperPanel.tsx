@@ -474,7 +474,7 @@ export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBa
                           <select
                             value={addRole}
                             onChange={(e) => setAddRole(e.target.value as MemberRole)}
-                            className="border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+                            className="border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300"
                           >
                             {ROLES.map((r) => (
                               <option key={r} value={r}>{r}</option>
@@ -514,7 +514,7 @@ export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBa
                           <select
                             value={emailInviteRole}
                             onChange={(e) => setEmailInviteRole(e.target.value as MemberRole)}
-                            className="border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+                            className="border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-300"
                           >
                             {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                           </select>
@@ -574,7 +574,7 @@ export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBa
                               <select
                                 value={m.role}
                                 onChange={(e) => changeRole(m.membership_id, e.target.value as MemberRole)}
-                                className={`text-[10px] font-bold px-2 py-1 rounded-full border-0 cursor-pointer focus:outline-none ${roleColor(m.role)}`}
+                                className={`text-[10px] font-bold px-2 py-1 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-300 ${roleColor(m.role)}`}
                               >
                                 {ROLES.map((r) => (
                                   <option key={r} value={r}>{r}</option>
@@ -847,7 +847,7 @@ export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBa
                     <select
                       value={invTenantId}
                       onChange={(e) => setInvTenantId(e.target.value)}
-                      className="border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-1.5 text-xs focus:outline-none max-w-[130px]"
+                      className="border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300 max-w-[130px]"
                     >
                       <option value="">🌐 Qualquer empresa</option>
                       {tenantStats.map((t) => (
