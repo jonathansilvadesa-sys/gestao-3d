@@ -95,16 +95,31 @@ export function TenantProvider({ children }: Props) {
       // Persiste tenant no cache para inicialização otimista nas próximas visitas
       try { localStorage.setItem(TENANT_CACHE_KEY, JSON.stringify(mappedTenant)); } catch { /* ignora */ }
 
-      // Developer: carrega todos os tenants
+      // Developer: carrega todos os tenants e respeita preferência salva,
+      // mesmo que o savedId seja de um tenant onde ele não é membro.
       if (activeRole === 'developer') {
         const { data: all } = await supabase
           .from('tenants')
           .select('*')
           .order('criado_em', { ascending: true });
-        setAllTenants((all ?? []).map(mapTenant));
+        const allMapped = (all ?? []).map(mapTenant);
+        setAllTenants(allMapped);
+
+        // Se o último acesso foi a outro tenant (ex: Arena), restaura essa preferência.
+        // O developer tem bypass de RLS no app_store, então pode acessar qualquer tenant.
+        if (savedId && savedId !== activeTenant.id) {
+          const savedTenant = allMapped.find(t => t.id === savedId);
+          if (savedTenant) {
+            setTenant(savedTenant);
+            setActiveTenant(savedId);
+            try { localStorage.setItem(TENANT_CACHE_KEY, JSON.stringify(savedTenant)); } catch { /* ignora */ }
+            await loadMembers(savedId);
+            return; // myRole = 'developer' já foi definido acima
+          }
+        }
       }
 
-      // Carrega membros do tenant ativo
+      // Carrega membros do tenant ativo (membership padrão)
       await loadMembers(activeTenant.id);
     } catch (e) {
       console.warn('[tenant] loadTenant exception:', e);
