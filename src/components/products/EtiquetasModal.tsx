@@ -181,7 +181,7 @@ export function EtiquetasModal({ product, onClose }: Props) {
                     if (!isNaN(v)) setPriceInput(v.toFixed(2).replace('.', ','));
                     else setPriceInput(product.precoConsumidor.toFixed(2).replace('.', ','));
                   }}
-                  className="w-32 text-center font-bold text-base border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl py-1.5 focus:outline-none focus:border-indigo-400 bg-white"
+                  className="w-32 text-center font-bold text-base border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl py-1.5 focus:outline-none focus:border-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-400 bg-white"
                 />
                 <button
                   onClick={() => setPriceInput(product.precoConsumidor.toFixed(2).replace('.', ','))}

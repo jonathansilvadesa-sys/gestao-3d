@@ -91,7 +91,7 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
           <button
             onClick={() => setTab('dashboard')}
             aria-label="Ir para o Dashboard"
-            className="sm:cursor-default flex items-center gap-2 sm:gap-3 mr-1 sm:mr-2 focus:outline-none sm:focus:outline-none"
+            className="sm:cursor-default flex items-center gap-2 sm:gap-3 mr-1 sm:mr-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-1 rounded-xl"
           >
             <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
               🖨

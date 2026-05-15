@@ -58,7 +58,7 @@ export function EditMarkupModal({ product: p, onClose, onSave }: Props) {
                 type="number" inputMode="decimal" step="0.5" min="1"
                 value={markup}
                 onChange={(e) => setMarkup(e.target.value)}
-                className="flex-1 text-center text-2xl font-bold border-2 border-amber-300 rounded-xl py-2 focus:outline-none focus:border-amber-500"
+                className="flex-1 text-center text-2xl font-bold border-2 border-amber-300 rounded-xl py-2 focus:outline-none focus:border-amber-500 focus-visible:ring-2 focus-visible:ring-amber-400"
               />
               <button
                 onClick={() => setMarkup((v) => String(parseFloat(v) + 0.5))}

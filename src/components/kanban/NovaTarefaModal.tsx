@@ -114,8 +114,8 @@ export function NovaTarefaModal({ tarefa, statusInicial = 'fila', onClose }: Pro
 
           {/* Título */}
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Título *</label>
-            <input type="text" value={titulo} onChange={(e) => setTitulo(e.target.value)}
+            <label htmlFor="tarefa-titulo" className="text-xs font-bold text-gray-400 uppercase tracking-widest">Título *</label>
+            <input id="tarefa-titulo" type="text" value={titulo} onChange={(e) => setTitulo(e.target.value)}
               placeholder="Ex: Imprimir peças do pedido #12"
               className="mt-1 w-full border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-400"
               required autoFocus />
@@ -139,8 +139,8 @@ export function NovaTarefaModal({ tarefa, statusInicial = 'fila', onClose }: Pro
 
           {/* Coluna / Status */}
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Coluna</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value as TarefaStatus)}
+            <label htmlFor="tarefa-coluna" className="text-xs font-bold text-gray-400 uppercase tracking-widest">Coluna</label>
+            <select id="tarefa-coluna" value={status} onChange={(e) => setStatus(e.target.value as TarefaStatus)}
               className="mt-1 w-full border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-400">
               {COLUNAS.map((c) => (
                 <option key={c.value} value={c.value}>{c.label}</option>
@@ -150,8 +150,8 @@ export function NovaTarefaModal({ tarefa, statusInicial = 'fila', onClose }: Pro
 
           {/* Peça do catálogo */}
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Peça do catálogo</label>
-            <select value={produtoId} onChange={(e) => setProdutoId(e.target.value)}
+            <label htmlFor="tarefa-peca" className="text-xs font-bold text-gray-400 uppercase tracking-widest">Peça do catálogo</label>
+            <select id="tarefa-peca" value={produtoId} onChange={(e) => setProdutoId(e.target.value)}
               className="mt-1 w-full border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-400">
               <option value="">— Nenhuma peça vinculada —</option>
               {products.map((p) => (
@@ -163,23 +163,23 @@ export function NovaTarefaModal({ tarefa, statusInicial = 'fila', onClose }: Pro
           {/* Quantidade + Prazo lado a lado */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Quantidade</label>
-              <input type="number" inputMode="numeric" min={1} value={quantidade}
+              <label htmlFor="tarefa-qtd" className="text-xs font-bold text-gray-400 uppercase tracking-widest">Quantidade</label>
+              <input id="tarefa-qtd" type="number" inputMode="numeric" min={1} value={quantidade}
                 onChange={(e) => setQuantidade(e.target.value)}
                 className="mt-1 w-full border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
             </div>
             <div>
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Prazo</label>
-              <input type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)}
+              <label htmlFor="tarefa-prazo" className="text-xs font-bold text-gray-400 uppercase tracking-widest">Prazo</label>
+              <input id="tarefa-prazo" type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)}
                 className="mt-1 w-full border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
             </div>
           </div>
 
           {/* Responsável */}
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Responsável</label>
+            <label htmlFor="tarefa-responsavel" className="text-xs font-bold text-gray-400 uppercase tracking-widest">Responsável</label>
             {membrosOptions.length > 1 ? (
-              <select value={responsavelNome}
+              <select id="tarefa-responsavel" value={responsavelNome}
                 onChange={(e) => setResponsavelNome(e.target.value)}
                 className="mt-1 w-full border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-400">
                 <option value="">— Sem responsável —</option>
@@ -188,7 +188,7 @@ export function NovaTarefaModal({ tarefa, statusInicial = 'fila', onClose }: Pro
                 ))}
               </select>
             ) : (
-              <input type="text" value={responsavelNome}
+              <input id="tarefa-responsavel" type="text" value={responsavelNome}
                 onChange={(e) => setResponsavelNome(e.target.value)}
                 placeholder="Nome do responsável"
                 className="mt-1 w-full border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
@@ -197,16 +197,16 @@ export function NovaTarefaModal({ tarefa, statusInicial = 'fila', onClose }: Pro
 
           {/* Descrição */}
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Descrição</label>
-            <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)}
+            <label htmlFor="tarefa-descricao" className="text-xs font-bold text-gray-400 uppercase tracking-widest">Descrição</label>
+            <textarea id="tarefa-descricao" value={descricao} onChange={(e) => setDescricao(e.target.value)}
               rows={2} placeholder="Detalhes da tarefa (opcional)"
               className="mt-1 w-full border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
           </div>
 
           {/* Notas */}
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Notas internas</label>
-            <textarea value={notas} onChange={(e) => setNotas(e.target.value)}
+            <label htmlFor="tarefa-notas" className="text-xs font-bold text-gray-400 uppercase tracking-widest">Notas internas</label>
+            <textarea id="tarefa-notas" value={notas} onChange={(e) => setNotas(e.target.value)}
               rows={2} placeholder="Ex: usar PLA preto, parâmetros de impressão..."
               className="mt-1 w-full border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
           </div>

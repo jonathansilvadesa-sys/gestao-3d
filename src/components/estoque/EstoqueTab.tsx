@@ -362,7 +362,7 @@ export function EstoqueTab({ products, onProduzir, onVender, onAjustar, onFalha 
                         onChange={(ev) => setInput(p.id, ev.target.value)}
                         onKeyDown={(ev) => { if (ev.key === 'Enter') confirmar(p); if (ev.key === 'Escape') fechar(p.id); }}
                         autoFocus
-                        className="flex-1 text-center font-bold text-xl border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl py-2 focus:outline-none focus:border-indigo-400 bg-white"
+                        className="flex-1 text-center font-bold text-xl border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl py-2 focus:outline-none focus:border-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-400 bg-white"
                       />
                       <button
                         onClick={() => setInput(p.id, String((parseInt(e.input) || 0) + 1))}

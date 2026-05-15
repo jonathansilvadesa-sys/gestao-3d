@@ -464,7 +464,7 @@ export function HardwareTab() {
                           if (h > 0) { adicionarHoras(p.id, h); setHorasInput((prev) => ({ ...prev, [p.id]: '' })); }
                         }
                       }}
-                      className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-indigo-400"
+                      className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-400"
                     />
                     <button
                       onClick={() => {
