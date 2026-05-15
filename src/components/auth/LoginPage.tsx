@@ -289,8 +289,9 @@ export function LoginPage({ onShowSignup }: Props) {
 
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">E-mail</label>
+                  <label htmlFor="login-email" className="text-xs font-bold text-gray-400 uppercase tracking-widest">E-mail</label>
                   <input
+                    id="login-email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -301,8 +302,9 @@ export function LoginPage({ onShowSignup }: Props) {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Senha</label>
+                  <label htmlFor="login-password" className="text-xs font-bold text-gray-400 uppercase tracking-widest">Senha</label>
                   <input
+                    id="login-password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -375,8 +377,9 @@ export function LoginPage({ onShowSignup }: Props) {
 
               <form onSubmit={handleReset} className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">E-mail</label>
+                  <label htmlFor="reset-email" className="text-xs font-bold text-gray-400 uppercase tracking-widest">E-mail</label>
                   <input
+                    id="reset-email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}

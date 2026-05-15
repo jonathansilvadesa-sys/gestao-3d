@@ -1,6 +1,6 @@
 import type { AppTab } from '@/types';
 import {
-  IconDashboard, IconProdutos, IconMateriais,
+  IconProdutos, IconMateriais,
   IconEstoque, IconPedidos, IconKanban,
 } from '@/components/layout/TabIcons';
 
@@ -10,8 +10,9 @@ interface Props {
   totalEstoque: number;
 }
 
+// Máximo 5 itens (guideline mobile: bottom nav ≤5)
+// Dashboard acessível pelo logo 🖨 no topo do Header
 const TABS: { key: AppTab; label: string; icon: JSX.Element }[] = [
-  { key: 'dashboard', label: 'Dashboard', icon: <IconDashboard size={22} /> },
   { key: 'produtos',  label: 'Peças',     icon: <IconProdutos  size={22} /> },
   { key: 'materiais', label: 'Materiais', icon: <IconMateriais size={22} /> },
   { key: 'estoque',   label: 'Estoque',   icon: <IconEstoque   size={22} /> },

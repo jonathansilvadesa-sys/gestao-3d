@@ -214,10 +214,11 @@ export function SignupPage({ onBack }: Props) {
 
             {/* Nome completo */}
             <div>
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+              <label htmlFor="signup-nome" className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                 Nome completo
               </label>
               <input
+                id="signup-nome"
                 type="text"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
@@ -230,10 +231,11 @@ export function SignupPage({ onBack }: Props) {
 
             {/* E-mail */}
             <div>
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+              <label htmlFor="signup-email" className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                 E-mail
               </label>
               <input
+                id="signup-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -246,10 +248,11 @@ export function SignupPage({ onBack }: Props) {
 
             {/* Nome da empresa */}
             <div>
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+              <label htmlFor="signup-empresa" className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                 Nome da empresa / negócio
               </label>
               <input
+                id="signup-empresa"
                 type="text"
                 value={empresa}
                 onChange={(e) => setEmpresa(e.target.value)}
@@ -261,11 +264,12 @@ export function SignupPage({ onBack }: Props) {
 
             {/* Senha */}
             <div>
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+              <label htmlFor="signup-senha" className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                 Senha
               </label>
               <div className="relative mt-1">
                 <input
+                  id="signup-senha"
                   type={showSenha ? 'text' : 'password'}
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
@@ -298,10 +302,11 @@ export function SignupPage({ onBack }: Props) {
 
             {/* Confirmar senha */}
             <div>
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+              <label htmlFor="signup-confirma" className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                 Confirmar senha
               </label>
               <input
+                id="signup-confirma"
                 type={showSenha ? 'text' : 'password'}
                 value={confirma}
                 onChange={(e) => setConfirma(e.target.value)}
@@ -321,10 +326,11 @@ export function SignupPage({ onBack }: Props) {
 
             {/* Código de convite */}
             <div>
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+              <label htmlFor="signup-codigo" className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                 Código de convite
               </label>
               <input
+                id="signup-codigo"
                 type="text"
                 value={codigo}
                 onChange={(e) => handleCodigo(e.target.value)}
