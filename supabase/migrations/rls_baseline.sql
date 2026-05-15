@@ -26,6 +26,9 @@ DROP POLICY IF EXISTS "app_store_select" ON public.app_store;
 CREATE POLICY "app_store_select" ON public.app_store
   FOR SELECT TO authenticated
   USING (
+    -- developer pode ver qualquer tenant (switchTenant sem membership)
+    (auth.jwt() -> 'app_metadata' ->> 'role') = 'developer'
+    OR
     -- modo multi-tenant: usuário é membro ativo do tenant
     (tenant_id IS NOT NULL AND EXISTS (
       SELECT 1 FROM public.tenant_memberships m
@@ -43,6 +46,8 @@ DROP POLICY IF EXISTS "app_store_insert" ON public.app_store;
 CREATE POLICY "app_store_insert" ON public.app_store
   FOR INSERT TO authenticated
   WITH CHECK (
+    (auth.jwt() -> 'app_metadata' ->> 'role') = 'developer'
+    OR
     (tenant_id IS NOT NULL AND EXISTS (
       SELECT 1 FROM public.tenant_memberships m
       WHERE m.tenant_id = app_store.tenant_id
@@ -58,6 +63,8 @@ DROP POLICY IF EXISTS "app_store_update" ON public.app_store;
 CREATE POLICY "app_store_update" ON public.app_store
   FOR UPDATE TO authenticated
   USING (
+    (auth.jwt() -> 'app_metadata' ->> 'role') = 'developer'
+    OR
     (tenant_id IS NOT NULL AND EXISTS (
       SELECT 1 FROM public.tenant_memberships m
       WHERE m.tenant_id = app_store.tenant_id
@@ -68,6 +75,8 @@ CREATE POLICY "app_store_update" ON public.app_store
     (tenant_id IS NULL AND user_id = (SELECT auth.uid()))
   )
   WITH CHECK (
+    (auth.jwt() -> 'app_metadata' ->> 'role') = 'developer'
+    OR
     (tenant_id IS NOT NULL AND EXISTS (
       SELECT 1 FROM public.tenant_memberships m
       WHERE m.tenant_id = app_store.tenant_id
@@ -83,6 +92,8 @@ DROP POLICY IF EXISTS "app_store_delete" ON public.app_store;
 CREATE POLICY "app_store_delete" ON public.app_store
   FOR DELETE TO authenticated
   USING (
+    (auth.jwt() -> 'app_metadata' ->> 'role') = 'developer'
+    OR
     (tenant_id IS NOT NULL AND EXISTS (
       SELECT 1 FROM public.tenant_memberships m
       WHERE m.tenant_id = app_store.tenant_id

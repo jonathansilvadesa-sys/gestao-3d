@@ -310,12 +310,26 @@ export function DeveloperBadge({ externalTrigger, onExternalClose }: DeveloperBa
 
   const gerarConvite = async () => {
     setGenerating(true);
-    const payload: Record<string, unknown> = {};
-    if (invNote.trim())   payload.note      = invNote.trim();
-    if (invTenantId)      payload.tenant_id = invTenantId;
+
+    // 1. Gera código via RPC (garante unicidade e formato XXXX-XXXX)
+    const { data: codeData, error: codeErr } = await supabase.rpc('generate_invite_code');
+    if (codeErr || !codeData) {
+      console.error('[dev] generate_invite_code error:', codeErr?.message);
+      alert('Erro ao gerar código de convite: ' + (codeErr?.message ?? 'tente novamente'));
+      setGenerating(false);
+      return;
+    }
+
+    // 2. Insere o convite com o código explícito
+    const payload: Record<string, unknown> = { code: codeData };
+    if (invNote.trim()) payload.note      = invNote.trim();
+    if (invTenantId)    payload.tenant_id = invTenantId;
 
     const { data, error } = await supabase.from('invites').insert(payload).select().single();
-    if (!error && data) {
+    if (error) {
+      console.error('[dev] invites insert error:', error.message);
+      alert('Erro ao salvar convite: ' + error.message);
+    } else if (data) {
       const tenantNome = invTenantId
         ? tenantStats.find((t) => t.id === invTenantId)?.nome
         : undefined;

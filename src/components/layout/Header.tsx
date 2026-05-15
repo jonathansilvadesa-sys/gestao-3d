@@ -5,6 +5,7 @@ import { useMaterials }    from '@/contexts/MaterialContext';
 import { useTheme }        from '@/contexts/ThemeContext';
 import { useHardware }     from '@/contexts/HardwareContext';
 import { usePermissions }  from '@/contexts/PermissionsContext';
+import { useTenant }       from '@/contexts/TenantContext';
 import { SettingsModal }   from '@/components/settings/SettingsModal';
 import { DeveloperBadge }  from '@/components/admin/DeveloperPanel';
 import {
@@ -33,6 +34,7 @@ const TABS: { key: AppTab; label: string; icon: JSX.Element }[] = [
 
 export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakEvenCount = 0 }: HeaderProps) {
   const { user, logout }       = useAuth();
+  const { tenant }             = useTenant();
   const { getAbaixoMinimo }    = useAcessorios();
   const { materials }          = useMaterials();
   const { theme, toggleTheme } = useTheme();
@@ -129,6 +131,23 @@ export function Header({ tab, setTab, totalEstoque, onNovaPeca, onSearch, breakE
               externalTrigger={devTrigger}
               onExternalClose={() => setDevTrigger(false)}
             />
+
+            {/* ── Tag de empresa ativa (apenas developer) ──────────────── */}
+            {user?.role === 'developer' && tenant && (
+              <button
+                onClick={() => setDevTrigger(true)}
+                title="Trocar empresa no Painel Dev"
+                className="hidden sm:flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-400 text-xs font-bold px-2.5 py-1.5 rounded-xl hover:bg-amber-100 dark:hover:bg-amber-900/40 transition max-w-[140px]"
+              >
+                {/* ícone building */}
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <path d="M9 22V12h6v10"/>
+                  <path d="M9 7h.01M15 7h.01M9 12h.01M15 12h.01"/>
+                </svg>
+                <span className="truncate">{tenant.nome}</span>
+              </button>
+            )}
 
             {/* ── Busca Global — visível em todas as telas ─────────────── */}
             {onSearch && (
