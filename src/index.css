@@ -131,3 +131,14 @@ html.dark ::-webkit-scrollbar        { width: 6px; height: 6px; }
 html.dark ::-webkit-scrollbar-track  { background: #1f2937; }
 html.dark ::-webkit-scrollbar-thumb  { background: #4b5563; border-radius: 3px; }
 html.dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+/* ── Reduced motion — respeita preferência do SO ──────────────── */
+@media (prefers-reduced-motion: reduce) {
+  /* Remove todas as animações e transições */
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

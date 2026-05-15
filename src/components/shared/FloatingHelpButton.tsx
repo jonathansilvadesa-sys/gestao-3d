@@ -13,7 +13,7 @@ export function FloatingHelpButton() {
       title="Rever guia de boas-vindas"
       aria-label="Abrir guia de usabilidade"
       className="fixed bottom-[72px] sm:bottom-6 left-4 sm:left-6 z-50 w-12 h-12 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl hover:shadow-2xl transition-all duration-200 flex items-center justify-center font-bold text-lg group"
-      style={{ animation: 'fadeInScale 0.4s ease-out' }}
+      style={{ animation: 'fadeInScale 0.3s ease-out' }}
     >
       <span className="group-hover:scale-110 transition-transform duration-150 select-none">?</span>
       {/* Tooltip on hover */}
