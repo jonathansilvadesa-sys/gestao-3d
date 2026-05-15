@@ -122,17 +122,14 @@ ALTER TABLE public.tenant_memberships ENABLE ROW LEVEL SECURITY;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.tenant_memberships TO authenticated;
 
--- SELECT: ver membros do próprio tenant
+-- SELECT: cada usuário vê apenas as suas próprias linhas de membership.
+--   Subquery na mesma tabela → recursão infinita. Usar check direto na coluna.
+--   A lista de membros de um tenant é obtida via get_tenant_members_info() (SECURITY DEFINER).
 DROP POLICY IF EXISTS "memberships_select" ON public.tenant_memberships;
 CREATE POLICY "memberships_select" ON public.tenant_memberships
   FOR SELECT TO authenticated
   USING (
-    EXISTS (
-      SELECT 1 FROM public.tenant_memberships m
-      WHERE m.tenant_id = tenant_memberships.tenant_id
-        AND m.user_id   = (SELECT auth.uid())
-        AND m.ativo     = true
-    )
+    user_id = (SELECT auth.uid())
     OR (auth.jwt() -> 'app_metadata' ->> 'role') = 'developer'
   );
 
